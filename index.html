@@ -58,7 +58,7 @@ padding:env(safe-area-inset-top) 16px calc(88px + env(safe-area-inset-bottom));p
 .bottom-nav button{border:0;background:transparent;color:#998572;font-weight:900;border-radius:15px;padding:8px}.bottom-nav button span{display:block;font-size:20px}.bottom-nav button.active{color:var(--orange);background:#fff3da}
 .sheet{width:min(460px,100%);max-width:none;margin:auto auto 0;border:0;border-radius:28px 28px 0 0;padding:14px 16px calc(24px + env(safe-area-inset-bottom));background:var(--paper);color:var(--brown)}
 .sheet::backdrop,.modal::backdrop{background:rgba(60,38,18,.52);backdrop-filter:blur(4px)}
-.handle{width:48px;height:5px;background:#e4d6c3;border-radius:999px;margin:0 auto 10px}.close-sheet{position:absolute;right:16px;top:16px;width:34px;height:34px;border:0;border-radius:50%;background:#f4eadc;color:var(--brown);font-size:21px}
+.handle{width:48px;height:5px;background:#e4d6c3;border-radius:999px;margin:0 auto 10px}.close-sheet{position:fixed;right:max(18px,calc((100vw - 460px)/2 + 18px));top:18px;width:44px;height:44px;border:3px solid #fff;border-radius:50%;background:#6f421d;color:#fff;font-size:28px;line-height:1;z-index:9999;box-shadow:0 6px 18px rgba(0,0,0,.35)}
 .sheet-hero{position:relative}.sheet-hero img{width:100%;height:270px;object-fit:cover;border-radius:20px}.sheet-grade{position:absolute;left:14px;bottom:14px;background:white;border-radius:999px;padding:6px 10px;font-weight:900;color:#7f5cac;box-shadow:0 3px 12px rgba(0,0,0,.15)}
 .sheet-content h3{font-size:24px;margin:16px 0}.sheet-stat{display:flex;justify-content:space-between;padding-top:14px;border-top:1px solid var(--line)}.owners{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 18px}.owner{background:#edf5e8;color:#4b773b;padding:8px 11px;border-radius:999px;font-weight:900;font-size:13px}.owner.empty{background:#f1ece5;color:var(--muted)}
 .cta{width:100%;height:52px;border:0;border-radius:16px;background:linear-gradient(#ffb83c,#ee9410);color:white;font-weight:900;box-shadow:0 8px 18px rgba(232,144,23,.28)}
@@ -363,6 +363,12 @@ async function toggleOwnership(id){
 }
 
 $(".close-sheet").onclick=()=>$("#flowerSheet").close();
+
+// 팝업 바깥 영역을 누르면 닫기
+$("#flowerSheet").addEventListener("click", (e) => {
+  if (e.target === $("#flowerSheet")) $("#flowerSheet").close();
+});
+
 $("#toggleOwn").onclick=async()=>{
   const id=state.selected;
   await toggleOwnership(id);
