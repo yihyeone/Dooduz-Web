@@ -27,7 +27,7 @@ header{display:flex;justify-content:space-between;align-items:center;padding:12p
 <div class="head"><div><h2>길드 보유현황</h2><p>꽃을 누르면 보유 길드원을 확인할 수 있습니다.</p></div><b id="count"></b></div>
 <div class="grid" id="grid"><div class="loading">Google 시트에서 데이터를 불러오는 중입니다…</div></div>
 </div>
-<dialog class="sheet" id="sheet"><button class="close" id="x" aria-label="닫기">×</button><button class="nav-arrow prev" id="prev" aria-label="이전 꽃">‹</button><button class="nav-arrow next" id="next" aria-label="다음 꽃">›</button><div class="detail-main"><img id="big"><h3 id="name"></h3><div class="grade" id="g"></div></div><div class="owner-title"><span>보유 길드원</span><b id="oc"></b></div><div class="owners" id="owners"></div></dialog>
+<dialog class="sheet" id="sheet"><button class="close" id="x" aria-label="닫기">×</button><button class="nav-arrow prev" id="prev" aria-label="이전 꽃">‹</button><button class="nav-arrow next" id="next" aria-label="다음 꽃">›</button><div class="detail-main"><img id="big"><h3 id="flowerName"></h3><div class="grade" id="g"></div></div><div class="owner-title"><span>보유 길드원</span><b id="oc"></b></div><div class="owners" id="owners"></div></dialog>
 <div class="footer">Google Sheets 데이터 기준 · 웹에서는 조회만 가능합니다.</div>
 <script>
 const CSV="https://docs.google.com/spreadsheets/d/e/2PACX-1vSighkaGKMuouQNsjGsanPYmZE9jJ03_mIqUJ4RnFPhr5LKKVwNf2ZrgFpRdPl1cSDn3s7t5xTOOyo0/pub?gid=129712828&single=true&output=csv";
@@ -59,7 +59,7 @@ function list(){
  return a
 }
 function render(){let a=list();count.textContent=a.length+"종";if(!a.length){grid.innerHTML='<div class="empty">조건에 맞는 꽃이 없습니다.</div>';return}grid.innerHTML=a.map(f=>`<button class="card" data-i="${f.id}"><img class="thumb" src="${f.img||''}" alt="${esc(f.n)}"><div class="info"><h3>${esc(f.n)}</h3><div class="meta"><span>${esc(f.g)}</span><strong>${f.o.length?f.o.length+"명":"미보유"}</strong></div></div></button>`).join("");document.querySelectorAll(".card").forEach(b=>b.onclick=()=>open(+b.dataset.i))}
-function open(i){let f=flowers.find(x=>x.id==i);if(!f)return;detailId=i;big.src=f.img||"";name.textContent=f.n;g.textContent=f.g;oc.textContent=f.o.length+"명";owners.innerHTML=f.o.length?f.o.map(x=>`<span class="owner">${esc(x)}</span>`).join(""):'<span class="owner none">현재 등록된 보유자가 없습니다.</span>';if(!sheet.open)sheet.showModal()}
+function open(i){let f=flowers.find(x=>x.id==i);if(!f)return;detailId=i;document.getElementById("big").src=f.img||"";document.getElementById("flowerName").textContent=f.n;document.getElementById("g").textContent=f.g;document.getElementById("oc").textContent=f.o.length+"명";document.getElementById("owners").innerHTML=f.o.length?f.o.map(x=>`<span class="owner">${esc(x)}</span>`).join(""):'<span class="owner none">현재 등록된 보유자가 없습니다.</span>';if(!sheet.open)sheet.showModal()}
 function moveDetail(step){let a=list(),i=a.findIndex(f=>f.id===detailId);if(!a.length)return;open(a[(i+step+a.length)%a.length].id)}
 x.onclick=()=>sheet.close();
 prev.onclick=()=>moveDetail(-1);
