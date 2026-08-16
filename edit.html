@@ -13,7 +13,7 @@
 .tools{position:sticky;top:57px;z-index:15;margin:0 -16px 12px;padding:11px 16px;background:rgba(255,250,240,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}.search{width:100%;height:43px;border:1px solid #d9c7b0;border-radius:12px;padding:0 13px;font-size:15px}.grades{display:flex;gap:6px;margin-top:8px}.grades button{flex:1;min-height:34px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--text);font-weight:900}.grades button.on{box-shadow:inset 0 0 0 2px currentColor}
 .list{display:grid;gap:8px}.flower{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:10px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fff}.flower input{width:22px;height:22px;accent-color:var(--green)}.flower-name{font-size:14px;font-weight:850}.grade{padding:4px 8px;border-radius:999px;font-size:11px;font-weight:950}.grade-UR{background:#fde7ef;color:#ad4f72}.grade-SSR{background:#fff2c9;color:#876417}.grade-SR{background:#eee4fa;color:#6e4b9e}.grade-R{background:#e1f1fb;color:#37749a}.grade-N{background:#e5f3df;color:#4f7b3e}
 .savebar{position:fixed;left:50%;bottom:0;z-index:30;width:min(100%,680px);transform:translateX(-50%);padding:10px 16px calc(env(safe-area-inset-bottom,0px) + 10px);background:rgba(255,250,240,.97);border-top:1px solid var(--line);backdrop-filter:blur(10px)}.savebar .btn{margin:0}.status{text-align:center;margin:0 0 7px;font-size:12px;font-weight:800;color:var(--muted)}
-.setup{display:none;margin-top:12px;padding:12px;border-radius:12px;background:#fff3d5;color:#76531a;font-size:13px;font-weight:800}
+.setup{display:none;margin-top:12px;padding:12px;border-radius:12px;background:#fff3d5;color:#76531a;font-size:13px;font-weight:800}.admin-link{display:block;margin-top:12px;padding:12px;text-align:center;border:1px solid var(--line);border-radius:12px;background:#fffaf0;color:var(--brown);font-size:13px;font-weight:900;text-decoration:none}
 </style>
 </head>
 <body><main class="page">
@@ -23,7 +23,7 @@
 <div class="field"><label for="pin">개인 PIN</label><input id="pin" type="password" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="PIN 입력"></div>
 <div class="field"><label for="nickname">내 닉네임</label><input id="nickname" maxlength="30" placeholder="게임 닉네임을 정확히 입력"></div>
 <button class="btn" id="enter">내 보유 꽃 불러오기</button><div class="error" id="loginError"></div>
-<div class="setup" id="setup">시트 저장 연결을 준비 중입니다. Apps Script 배포 주소가 연결되면 사용할 수 있습니다.</div></section>
+<div class="setup" id="setup">시트 저장 연결을 준비 중입니다. Apps Script 배포 주소가 연결되면 사용할 수 있습니다.</div><a class="admin-link" href="admin.html">길드원·PIN 관리</a></section>
 <section class="editor" id="editor"><div class="member-head"><strong id="memberName"></strong><span class="owned-count"><b id="selectedCount">0</b>종 선택</span></div>
 <div class="tools"><input class="search" id="search" placeholder="꽃 이름 검색"><div class="grades" id="grades"><button class="on" data-g="ALL">전체</button><button data-g="UR">UR</button><button data-g="SSR">SSR</button><button data-g="SR">SR</button><button data-g="R">R</button><button data-g="N">N</button></div></div>
 <div class="list" id="list"></div><div class="savebar"><p class="status" id="status">변경 후 저장하기를 눌러주세요.</p><button class="btn" id="save">보유 꽃 저장하기</button></div></section>
