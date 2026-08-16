@@ -4,6 +4,7 @@
     let s=await fetch('./app.html?v=20260815',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error(r.status);return r.text()});
     const css=`<style id="top3-style">
 .top3bar{margin:10px 0 0;background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);min-height:46px;padding:9px 11px;display:flex;align-items:center;gap:8px;overflow:hidden}.top3-title{font-size:11px;font-weight:950;white-space:nowrap;color:var(--brown);flex:none}.top3-list{display:flex;align-items:center;gap:5px;min-width:0;flex:1;overflow:hidden}.top3-item{display:flex;align-items:center;gap:3px;min-width:0;flex:1;padding-left:6px;border-left:1px solid var(--line);font-size:10px;white-space:nowrap;text-decoration:none;color:inherit}.top3-item:first-child{border-left:0;padding-left:0}.top3-rank{font-size:13px;flex:none}.top3-name{font-weight:900;overflow:hidden;text-overflow:ellipsis;min-width:0;text-decoration:underline;text-underline-offset:2px}.top3-count{font-weight:950;color:var(--green);flex:none}.top3-empty{font-size:10px;color:var(--muted);font-weight:800}@media(max-width:390px){.top3bar{gap:6px;padding:8px 9px}.top3-title{font-size:10px}.top3-item{font-size:9px;padding-left:4px;gap:2px}.top3-rank{font-size:12px}}
+.stats{display:block!important}.guild-stat{padding:14px 15px 15px!important}.guild-stat-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.guild-stat-head span{font-size:12px!important}.guild-rate{font-size:21px!important;color:var(--green);margin:0!important}.guild-count{display:flex;align-items:baseline;gap:6px;margin-top:3px}.guild-count #owned{display:inline;margin:0;font-size:27px}.guild-count span{font-size:12px!important}.guild-count b{color:var(--brown);font-size:12px}.guild-stat .progress{height:10px;margin-top:10px}.guild-stat #totalBar{display:none}
 </style>`;
     const html=`<div class="top3bar" id="top3bar"><div class="top3-title">🏆 SR이상 수집왕 TOP 3</div><div class="top3-list" id="top3list"><span class="top3-empty">집계 중…</span></div></div>`;
     const fn=`function renderTop3(){
@@ -15,6 +16,9 @@
  const medal=['🥇','🥈','🥉'];box.innerHTML=a.map((x,i)=>'<a class="top3-item" href="member.html?name='+encodeURIComponent(x.name)+'"><span class="top3-rank">'+medal[i]+'</span><span class="top3-name">'+esc(x.name)+'</span><span class="top3-count">'+x.total+'종</span></a>').join('');
 }
 `;
+    const oldStats=`<div class="stats"><div class="stat"><span>전체 꽃</span><div class="stat-top"><strong id="total">-</strong><small class="stat-percent">100%</small></div><div class="progress"><i id="totalBar"></i></div></div><div class="stat"><span>길드 보유</span><div class="stat-top"><strong id="owned">-</strong><small class="stat-percent" id="rate">-</small></div><div class="progress"><i id="ownedBar"></i></div></div></div>`;
+    const newStats=`<div class="stats"><div class="stat guild-stat"><div class="guild-stat-head"><span>길드 도감 완성도</span><strong class="guild-rate" id="rate">-</strong></div><div class="guild-count"><strong id="owned">-</strong><span>/ 전체 <b id="total">-</b></span></div><div class="progress"><i id="ownedBar"></i></div><i id="totalBar" hidden></i></div></div>`;
+    s=s.replace(oldStats,newStats);
     s=s.replace('</head>',css+'</head>');
     s=s.replace('<div class="tools">',html+'<div class="tools">');
     s=s.replace('async function load(){',fn+'async function load(){');
