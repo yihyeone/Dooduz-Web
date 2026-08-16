@@ -1,7 +1,7 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>두더지도굴단 꽃 도감</title></head><body><script>
 (async()=>{
   try{
-    let s=await fetch('./app.html?v=20260816',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error(r.status);return r.text()});
+    let s=await fetch('./app.html?v=20260815',{cache:'no-store'}).then(r=>{if(!r.ok)throw Error(r.status);return r.text()});
     const css=`<style id="top3-style">
 .top3bar{margin:10px 0 0;background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);min-height:46px;padding:9px 11px;display:flex;align-items:center;gap:8px;overflow:hidden}.top3-title{font-size:11px;font-weight:950;white-space:nowrap;color:var(--brown);flex:none}.top3-list{display:flex;align-items:center;gap:5px;min-width:0;flex:1;overflow:hidden}.top3-item{display:flex;align-items:center;gap:3px;min-width:0;flex:1;padding-left:6px;border-left:1px solid var(--line);font-size:10px;white-space:nowrap;text-decoration:none;color:inherit}.top3-item:first-child{border-left:0;padding-left:0}.top3-rank{font-size:13px;flex:none}.top3-name{font-weight:900;overflow:hidden;text-overflow:ellipsis;min-width:0;text-decoration:underline;text-underline-offset:2px}.top3-count{font-weight:950;color:var(--green);flex:none}.top3-empty{font-size:10px;color:var(--muted);font-weight:800}@media(max-width:390px){.top3bar{gap:6px;padding:8px 9px}.top3-title{font-size:10px}.top3-item{font-size:9px;padding-left:4px;gap:2px}.top3-rank{font-size:12px}}
 </style>`;
@@ -15,9 +15,6 @@
  const medal=['🥇','🥈','🥉'];box.innerHTML=a.map((x,i)=>'<a class="top3-item" href="member.html?name='+encodeURIComponent(x.name)+'"><span class="top3-rank">'+medal[i]+'</span><span class="top3-name">'+esc(x.name)+'</span><span class="top3-count">'+x.total+'종</span></a>').join('');
 }
 `;
-    s=s.replace('<script>','<script src="./images/new-flower-images.js?v=20260816"></script><script src="./flower-update.js?v=20260816"></script><script>');
-    s=s.replace('const IMG=new Map','(window.FLOWER_IMAGE_ALIASES||[]).forEach(([correct,legacy])=>{if(IMAGES[legacy])IMAGES[correct]=IMAGES[legacy]});Object.assign(IMAGES,window.NEW_FLOWER_IMAGES||{});const IMG=new Map');
-    s=s.replace('total.textContent=flowers.length', '(window.SUPPLEMENTAL_FLOWERS||[]).forEach(n=>{if(!flowers.some(f=>norm(f.n)===norm(n)))flowers.push({id:flowers.length,n,g:"SSR",o:[],img:IMG.get(norm(n))})});total.textContent=flowers.length');
     s=s.replace('</head>',css+'</head>');
     s=s.replace('<div class="tools">',html+'<div class="tools">');
     s=s.replace('async function load(){',fn+'async function load(){');
