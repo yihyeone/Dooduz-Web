@@ -8,6 +8,7 @@
     const css=`<style id="top3-style">
 .top3bar{margin:10px 0 0;background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);min-height:46px;padding:9px 11px;display:flex;align-items:center;gap:8px;overflow:hidden}.top3-title{font-size:11px;font-weight:950;white-space:nowrap;color:var(--brown);flex:none}.top3-list{display:flex;align-items:center;gap:5px;min-width:0;flex:1;overflow:hidden}.top3-item{display:flex;align-items:center;gap:3px;min-width:0;flex:1;padding-left:6px;border-left:1px solid var(--line);font-size:10px;white-space:nowrap;text-decoration:none;color:inherit}.top3-item:first-child{border-left:0;padding-left:0}.top3-rank{font-size:13px;flex:none}.top3-name{font-weight:900;overflow:hidden;text-overflow:ellipsis;min-width:0;text-decoration:underline;text-underline-offset:2px}.top3-count{font-weight:950;color:var(--green);flex:none}.top3-empty{font-size:10px;color:var(--muted);font-weight:800}@media(max-width:390px){.top3bar{gap:6px;padding:8px 9px}.top3-title{font-size:10px}.top3-item{font-size:9px;padding-left:4px;gap:2px}.top3-rank{font-size:12px}}
 .stats{display:block!important}.guild-stat{padding:14px 15px 15px!important}.guild-stat-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.guild-stat-head span{font-size:12px!important}.guild-rate{font-size:21px!important;color:var(--green);margin:0!important}.guild-count{display:flex;align-items:baseline;gap:6px;margin-top:3px}.guild-count #owned{display:inline;margin:0;font-size:27px}.guild-count span{font-size:12px!important}.guild-count b{color:var(--brown);font-size:12px}.guild-stat .progress{height:10px;margin-top:10px}.guild-stat #totalBar{display:none}
+.owner.owner-link{text-decoration:none;cursor:pointer;display:inline-flex;align-items:center;gap:4px}.owner.owner-link:hover,.owner.owner-link:focus-visible{background:#dcefd2;outline:2px solid #8bb873;outline-offset:2px}.owner-link-arrow{font-size:15px;line-height:1}
 </style>`;
     const html=`<div class="top3bar" id="top3bar"><div class="top3-title">🏆 SR이상 수집왕 TOP 3</div><div class="top3-list" id="top3list"><span class="top3-empty">집계 중…</span></div></div>`;
     const fn=`function renderTop3(){
@@ -26,6 +27,7 @@
     s=s.replace('<div class="tools">',html+'<div class="tools">');
     s=s.replace('async function load(){',fn+'async function load(){');
     s=s.replace('ownedBar.style.width=p+"%";render()','ownedBar.style.width=p+"%";render();renderTop3()');
+    s=s.replace('f.o.map(x=>\`<span class="owner">\${esc(x)}</span>\`).join("")','f.o.map(x=>\`<a class="owner owner-link" href="member.html?name=\${encodeURIComponent(x)}" aria-label="\${esc(x)}님의 보유 꽃 보기">\${esc(x)}<span class="owner-link-arrow" aria-hidden="true">›</span></a>\`).join("")');
     document.open();document.write(s);document.close();
   }catch(e){document.body.innerHTML='<div style="font-family:sans-serif;padding:30px">페이지를 불러오지 못했습니다. 새로고침해주세요.</div>'}
 })();
