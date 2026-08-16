@@ -29,7 +29,7 @@
 <div class="list" id="list"></div><div class="savebar"><p class="status" id="status">변경 후 저장하기를 눌러주세요.</p><button class="btn" id="save">보유 꽃 저장하기</button></div></section>
 </div></main>
 <script>
-const API_URL='__APPS_SCRIPT_URL__';
+const API_URL='https://script.google.com/macros/s/AKfycbxY7OWiPo7oPRJciaSg3Jvomkv8PbuZ5JhhBMXcecjgUXE7vtWBQv5U0YXZk6fux3og/exec';
 const CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vSighkaGKMuouQNsjGsanPYmZE9jJ03_mIqUJ4RnFPhr5LKKVwNf2ZrgFpRdPl1cSDn3s7t5xTOOyo0/pub?gid=129712828&single=true&output=csv';
 let pinValue='',nicknameValue='',flowers=[],grade='ALL',query='';
 const $=s=>document.querySelector(s),esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
