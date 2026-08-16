@@ -1,6 +1,6 @@
 const SPREADSHEET_ID = '1W1UPlbS2wwHGQ3JjzsYlQ4ZuRqlxy5M7NuInap9B96w';
 const DATA_SHEET_GID = 129712828;
-const DEFAULT_SHARED_PIN = '120810';
+const MEMBER_PINS_PROPERTY = 'MEMBER_PINS';
 const LOG_SHEET_NAME = '변경 기록';
 
 function doGet(e) {
@@ -8,11 +8,14 @@ function doGet(e) {
   const callback = /^[A-Za-z_$][\w$\.]*$/.test(p.callback || '') ? p.callback : 'callback';
   try {
     const pin = String(p.pin || '');
-    if (!isValidPin_(pin)) return jsonp_(callback, { ok: false, error: 'PIN이 올바르지 않습니다.' });
+    const nickname = String(p.nickname || '').trim();
+    if (!isValidMemberPin_(nickname, pin)) {
+      return jsonp_(callback, { ok: false, error: '닉네임 또는 개인 PIN이 올바르지 않습니다.' });
+    }
 
-    if (p.action === 'verify') return jsonp_(callback, { ok: true });
+    if (p.action === 'verify') return jsonp_(callback, { ok: true, nickname: nickname });
     if (p.action === 'save') {
-      const result = saveOwnership_(String(p.nickname || '').trim(), String(p.rows || ''));
+      const result = saveOwnership_(nickname, String(p.rows || ''));
       return jsonp_(callback, result);
     }
     return jsonp_(callback, { ok: false, error: '지원하지 않는 요청입니다.' });
@@ -21,9 +24,19 @@ function doGet(e) {
   }
 }
 
-function isValidPin_(pin) {
-  const configured = PropertiesService.getScriptProperties().getProperty('SHARED_PIN');
-  return pin === (configured || DEFAULT_SHARED_PIN);
+function getMemberPins_() {
+  const raw = PropertiesService.getScriptProperties().getProperty(MEMBER_PINS_PROPERTY);
+  if (!raw) throw new Error('개인 PIN 설정이 아직 완료되지 않았습니다.');
+  const pins = JSON.parse(raw);
+  if (!pins || typeof pins !== 'object') throw new Error('개인 PIN 설정 형식이 올바르지 않습니다.');
+  return pins;
+}
+
+function isValidMemberPin_(nickname, pin) {
+  if (!nickname || !/^\d{4}$/.test(pin)) return false;
+  const pins = getMemberPins_();
+  return Object.prototype.hasOwnProperty.call(pins, nickname) &&
+    String(pins[nickname]) === pin;
 }
 
 function getDataSheet_() {
@@ -119,8 +132,23 @@ function jsonp_(callback, payload) {
     .setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
 
-function setSharedPin(newPin) {
-  const pin = String(newPin || '').trim();
-  if (!/^\d{4,10}$/.test(pin)) throw new Error('PIN은 숫자 4~10자리로 설정해 주세요.');
-  PropertiesService.getScriptProperties().setProperty('SHARED_PIN', pin);
+function setMemberPinsFromJson(jsonText) {
+  const pins = JSON.parse(String(jsonText || '{}'));
+  const names = Object.keys(pins);
+  if (!names.length) throw new Error('PIN 목록이 비어 있습니다.');
+
+  const used = {};
+  names.forEach(function(nickname) {
+    const pin = String(pins[nickname] || '');
+    if (!nickname.trim() || !/^\d{4}$/.test(pin)) {
+      throw new Error('모든 닉네임과 PIN을 확인해 주세요.');
+    }
+    if (used[pin]) throw new Error('중복 PIN이 있습니다: ' + pin);
+    used[pin] = true;
+    pins[nickname.trim()] = pin;
+    if (nickname !== nickname.trim()) delete pins[nickname];
+  });
+
+  PropertiesService.getScriptProperties()
+    .setProperty(MEMBER_PINS_PROPERTY, JSON.stringify(pins));
 }
