@@ -1,18 +1,42 @@
 const SPREADSHEET_ID = '1W1UPlbS2wwHGQ3JjzsYlQ4ZuRqlxy5M7NuInap9B96w';
 const DATA_SHEET_GID = 129712828;
-const DEFAULT_SHARED_PIN = '120810';
+const MEMBER_PINS_PROPERTY = 'MEMBER_PINS';
 const LOG_SHEET_NAME = '변경 기록';
+const MEMBER_LOG_SHEET_NAME = '길드원 PIN 변경 기록';
+const ADMIN_NICKNAME = '두더지도굴단';
 
 function doGet(e) {
   const p = e && e.parameter ? e.parameter : {};
   const callback = /^[A-Za-z_$][\w$\.]*$/.test(p.callback || '') ? p.callback : 'callback';
   try {
+    const action = String(p.action || '');
     const pin = String(p.pin || '');
-    if (!isValidPin_(pin)) return jsonp_(callback, { ok: false, error: 'PIN이 올바르지 않습니다.' });
+    const nickname = String(p.nickname || '').trim();
 
-    if (p.action === 'verify') return jsonp_(callback, { ok: true });
-    if (p.action === 'save') {
-      const result = saveOwnership_(String(p.nickname || '').trim(), String(p.rows || ''));
+    if (action.indexOf('admin-') === 0) {
+      if (!isAdminPin_(pin)) {
+        return jsonp_(callback, { ok: false, error: '관리자 PIN이 올바르지 않습니다.' });
+      }
+      if (action === 'admin-list') return jsonp_(callback, { ok: true, members: listMembers_() });
+      if (action === 'admin-save-member') {
+        return jsonp_(callback, saveMemberPin_(
+          String(p.memberNickname || '').trim(),
+          String(p.memberPin || '').trim()
+        ));
+      }
+      if (action === 'admin-delete-member') {
+        return jsonp_(callback, deleteMemberPin_(String(p.memberNickname || '').trim()));
+      }
+      return jsonp_(callback, { ok: false, error: '지원하지 않는 관리자 요청입니다.' });
+    }
+
+    if (!isValidMemberPin_(nickname, pin)) {
+      return jsonp_(callback, { ok: false, error: '닉네임 또는 개인 PIN이 올바르지 않습니다.' });
+    }
+
+    if (action === 'verify') return jsonp_(callback, { ok: true, nickname: nickname });
+    if (action === 'save') {
+      const result = saveOwnership_(nickname, String(p.rows || ''));
       return jsonp_(callback, result);
     }
     return jsonp_(callback, { ok: false, error: '지원하지 않는 요청입니다.' });
@@ -21,9 +45,115 @@ function doGet(e) {
   }
 }
 
-function isValidPin_(pin) {
-  const configured = PropertiesService.getScriptProperties().getProperty('SHARED_PIN');
-  return pin === (configured || DEFAULT_SHARED_PIN);
+function getMemberPins_() {
+  const raw = PropertiesService.getScriptProperties().getProperty(MEMBER_PINS_PROPERTY);
+  if (!raw) throw new Error('개인 PIN 설정이 아직 완료되지 않았습니다.');
+  const pins = JSON.parse(raw);
+  if (!pins || typeof pins !== 'object') throw new Error('개인 PIN 설정 형식이 올바르지 않습니다.');
+  return pins;
+}
+
+function isValidMemberPin_(nickname, pin) {
+  if (!nickname || !/^\d{4}$/.test(pin)) return false;
+  const pins = getMemberPins_();
+  return Object.prototype.hasOwnProperty.call(pins, nickname) &&
+    String(pins[nickname]) === pin;
+}
+
+function isAdminPin_(pin) {
+  const pins = getMemberPins_();
+  return /^\d{4}$/.test(pin) && String(pins[ADMIN_NICKNAME] || '') === pin;
+}
+
+function listMembers_() {
+  const pins = getMemberPins_();
+  return Object.keys(pins).map(function(nickname) {
+    return { nickname: nickname, pin: String(pins[nickname]) };
+  }).sort(function(a, b) {
+    if (a.nickname === ADMIN_NICKNAME) return -1;
+    if (b.nickname === ADMIN_NICKNAME) return 1;
+    return a.nickname.localeCompare(b.nickname, 'ko');
+  });
+}
+
+function saveMemberPin_(nickname, pin) {
+  if (!nickname || nickname.length > 30) throw new Error('닉네임을 정확히 입력해 주세요.');
+  if (!/^\d{4}$/.test(pin)) throw new Error('PIN은 숫자 4자리로 입력해 주세요.');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const pins = getMemberPins_();
+    const duplicate = Object.keys(pins).find(function(name) {
+      return name !== nickname && String(pins[name]) === pin;
+    });
+    if (duplicate) throw new Error('이미 다른 길드원이 사용 중인 PIN입니다.');
+
+    const existed = Object.prototype.hasOwnProperty.call(pins, nickname);
+    pins[nickname] = pin;
+    PropertiesService.getScriptProperties()
+      .setProperty(MEMBER_PINS_PROPERTY, JSON.stringify(pins));
+    appendMemberLog_(existed ? 'PIN 변경' : '길드원 추가', nickname);
+    return { ok: true, members: listMembers_() };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function deleteMemberPin_(nickname) {
+  if (!nickname) throw new Error('삭제할 닉네임을 확인해 주세요.');
+  if (nickname === ADMIN_NICKNAME) throw new Error('관리자 계정은 삭제할 수 없습니다.');
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    const pins = getMemberPins_();
+    if (!Object.prototype.hasOwnProperty.call(pins, nickname)) {
+      throw new Error('등록되지 않은 길드원입니다.');
+    }
+    const removedOwnershipCount = removeMemberOwnership_(nickname);
+    delete pins[nickname];
+    PropertiesService.getScriptProperties()
+      .setProperty(MEMBER_PINS_PROPERTY, JSON.stringify(pins));
+    appendMemberLog_('길드원 삭제 · 보유꽃 ' + removedOwnershipCount + '종 정리', nickname);
+    SpreadsheetApp.flush();
+    return { ok: true, members: listMembers_(), removedOwnershipCount: removedOwnershipCount };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function removeMemberOwnership_(nickname) {
+  const sheet = getDataSheet_();
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return 0;
+
+  const ownerCol = findColumn_(values[0], ['보유자 닉네임', '보유자닉네임', '보유자']);
+  if (ownerCol < 0) throw new Error('보유자 닉네임 열을 찾을 수 없습니다.');
+
+  let removedCount = 0;
+  const nextOwnerValues = [];
+  for (let i = 1; i < values.length; i++) {
+    const owners = parseOwners_(values[i][ownerCol]);
+    const filtered = owners.filter(function(owner) { return owner !== nickname; });
+    if (filtered.length !== owners.length) removedCount++;
+    nextOwnerValues.push([filtered.join(', ')]);
+  }
+  if (nextOwnerValues.length) {
+    sheet.getRange(2, ownerCol + 1, nextOwnerValues.length, 1).setValues(nextOwnerValues);
+  }
+  return removedCount;
+}
+
+function appendMemberLog_(action, nickname) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let log = ss.getSheetByName(MEMBER_LOG_SHEET_NAME);
+  if (!log) {
+    log = ss.insertSheet(MEMBER_LOG_SHEET_NAME);
+    log.appendRow(['변경 시각', '작업', '닉네임']);
+    log.setFrozenRows(1);
+  }
+  log.appendRow([new Date(), action, nickname]);
 }
 
 function getDataSheet_() {
@@ -119,8 +249,23 @@ function jsonp_(callback, payload) {
     .setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
 
-function setSharedPin(newPin) {
-  const pin = String(newPin || '').trim();
-  if (!/^\d{4,10}$/.test(pin)) throw new Error('PIN은 숫자 4~10자리로 설정해 주세요.');
-  PropertiesService.getScriptProperties().setProperty('SHARED_PIN', pin);
+function setMemberPinsFromJson(jsonText) {
+  const pins = JSON.parse(String(jsonText || '{}'));
+  const names = Object.keys(pins);
+  if (!names.length) throw new Error('PIN 목록이 비어 있습니다.');
+
+  const used = {};
+  names.forEach(function(nickname) {
+    const pin = String(pins[nickname] || '');
+    if (!nickname.trim() || !/^\d{4}$/.test(pin)) {
+      throw new Error('모든 닉네임과 PIN을 확인해 주세요.');
+    }
+    if (used[pin]) throw new Error('중복 PIN이 있습니다: ' + pin);
+    used[pin] = true;
+    pins[nickname.trim()] = pin;
+    if (nickname !== nickname.trim()) delete pins[nickname];
+  });
+
+  PropertiesService.getScriptProperties()
+    .setProperty(MEMBER_PINS_PROPERTY, JSON.stringify(pins));
 }
