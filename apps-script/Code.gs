@@ -111,14 +111,38 @@ function deleteMemberPin_(nickname) {
     if (!Object.prototype.hasOwnProperty.call(pins, nickname)) {
       throw new Error('등록되지 않은 길드원입니다.');
     }
+    const removedOwnershipCount = removeMemberOwnership_(nickname);
     delete pins[nickname];
     PropertiesService.getScriptProperties()
       .setProperty(MEMBER_PINS_PROPERTY, JSON.stringify(pins));
-    appendMemberLog_('길드원 삭제', nickname);
-    return { ok: true, members: listMembers_() };
+    appendMemberLog_('길드원 삭제 · 보유꽃 ' + removedOwnershipCount + '종 정리', nickname);
+    SpreadsheetApp.flush();
+    return { ok: true, members: listMembers_(), removedOwnershipCount: removedOwnershipCount };
   } finally {
     lock.releaseLock();
   }
+}
+
+function removeMemberOwnership_(nickname) {
+  const sheet = getDataSheet_();
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return 0;
+
+  const ownerCol = findColumn_(values[0], ['보유자 닉네임', '보유자닉네임', '보유자']);
+  if (ownerCol < 0) throw new Error('보유자 닉네임 열을 찾을 수 없습니다.');
+
+  let removedCount = 0;
+  const nextOwnerValues = [];
+  for (let i = 1; i < values.length; i++) {
+    const owners = parseOwners_(values[i][ownerCol]);
+    const filtered = owners.filter(function(owner) { return owner !== nickname; });
+    if (filtered.length !== owners.length) removedCount++;
+    nextOwnerValues.push([filtered.join(', ')]);
+  }
+  if (nextOwnerValues.length) {
+    sheet.getRange(2, ownerCol + 1, nextOwnerValues.length, 1).setValues(nextOwnerValues);
+  }
+  return removedCount;
 }
 
 function appendMemberLog_(action, nickname) {
