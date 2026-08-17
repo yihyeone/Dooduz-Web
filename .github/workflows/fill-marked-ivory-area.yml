@@ -1,0 +1,55 @@
+name: Fill marked ivory area safely
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fill-marked-ivory-area.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch only tools background
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker="    document.open();document.write(s);document.close();"
+          patch="    s=s.replace('</head>','<style id=\"dooduz-marked-gap-fill\">.tools{background:#fffaf0!important;box-shadow:0 -42px 0 0 #fffaf0!important}</style></head>');"
+          if 'dooduz-marked-gap-fill' not in s:
+              if marker not in s:
+                  raise SystemExit('target marker not found')
+              s=s.replace(marker,patch+'\n'+marker,1)
+              p.write_text(s,encoding='utf-8')
+          PY
+      - name: Verify wrapper JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8')
+          m=re.search(r'<script>(.*)</script>',s,re.S)
+          if not m: raise SystemExit('script not found')
+          Path('/tmp/index-wrapper.js').write_text(m.group(1),encoding='utf-8')
+          PY
+          node --check /tmp/index-wrapper.js
+      - name: Verify no sticky geometry override
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          frag=s.split('dooduz-marked-gap-fill',1)[1].split('</style>',1)[0]
+          forbidden=['position:','top:','z-index:','width:100vw','100vmax','left:','transform:']
+          bad=[x for x in forbidden if x in frag]
+          if bad: raise SystemExit('forbidden sticky/layout override: '+','.join(bad))
+          PY
+      - name: Commit safe patch
+        run: |
+          rm .github/workflows/fill-marked-ivory-area.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html .github/workflows/fill-marked-ivory-area.yml
+          git commit -m '표시된 고정영역 여백만 아이보리로 채움'
+          git push
