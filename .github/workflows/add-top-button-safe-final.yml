@@ -1,0 +1,63 @@
+name: Add TOP button safe final
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/add-top-button-safe-final.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch TOP button without nested script
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='    document.open();document.write(s);document.close();'
+          if 'dooduz-top-btn' in s:
+              raise SystemExit('TOP button already exists')
+          lines = [
+            "    s=s.replace('</head>','<style id=\"dooduz-top-button-style\">.dooduz-top-btn{position:fixed;right:max(16px,calc((100vw - 520px)/2 + 16px));bottom:68px;z-index:40;width:52px;height:52px;border:1px solid rgba(107,66,31,.24);border-radius:50%;background:rgba(74,43,29,.94);color:#fffaf0;box-shadow:0 8px 24px rgba(54,31,17,.22);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;opacity:0;pointer-events:none;transform:translateY(8px);transition:opacity .18s ease,transform .18s ease;cursor:pointer}.dooduz-top-btn.show{opacity:1;pointer-events:auto;transform:translateY(0)}.dooduz-top-btn span{font-size:20px;line-height:16px;font-weight:800}.dooduz-top-btn small{font-size:8px;line-height:11px;font-weight:900;letter-spacing:.04em}@media(max-width:520px){.dooduz-top-btn{right:16px;bottom:calc(68px + env(safe-area-inset-bottom,0px))}}</style></head>');",
+            "    s=s.replace('<body>','<body onscroll=\"document.getElementById(&quot;dooduzTopBtn&quot;).classList.toggle(&quot;show&quot;,window.scrollY&gt;1100)\">');",
+            "    s=s.replace('</body>','<button id=\"dooduzTopBtn\" class=\"dooduz-top-btn\" type=\"button\" aria-label=\"맨 위로\" onclick=\"window.scrollTo({top:0,behavior:&quot;smooth&quot;})\"><span aria-hidden=\"true\">↑</span><small>TOP</small></button></body>');"
+          ]
+          if marker not in s:
+              raise SystemExit('document.write marker not found')
+          s=s.replace(marker,'\n'.join(lines)+'\n'+marker,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Verify outer JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8')
+          m=re.search(r'<script>(.*)</script>',s,re.S)
+          if not m: raise SystemExit('outer script not found')
+          Path('/tmp/index-wrapper.js').write_text(m.group(1),encoding='utf-8')
+          PY
+          node --check /tmp/index-wrapper.js
+      - name: Verify safe insertion
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          assert 'dooduz-top-button-style' in s
+          assert 'dooduzTopBtn' in s
+          assert 'window.scrollY&gt;1100' in s
+          assert 'behavior:&quot;smooth&quot;' in s
+          # Existing sticky alignment must remain untouched.
+          assert 'dooduz-sticky-aligned' in s
+          assert '54px' in s
+          PY
+      - name: Commit TOP button
+        run: |
+          rm .github/workflows/add-top-button-safe-final.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html .github/workflows/add-top-button-safe-final.yml
+          git commit -m '우측 하단 TOP 버튼 안전 추가'
+          git push
