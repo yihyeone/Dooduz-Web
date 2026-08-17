@@ -1,0 +1,62 @@
+name: Patch display text
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch only title and footer text
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          original = s
+
+          # Browser title only.
+          s = s.replace('<title>두더지도굴단 꽃 도감</title>', '<title>🍀두더지도굴단 전용꽃도감🍀</title>')
+
+          # Visible home title: remove the small subtitle and expose only the requested title.
+          s = s.replace(
+              '<small>더 코지 플로리스트 · 두더지도굴단 전용</small><h1>두더지도굴단 꽃 도감 🌱</h1>',
+              '<h1>🍀두더지도굴단 전용꽃도감🍀</h1>'
+          )
+          s = s.replace(
+              '<small>더 코지 플로리스트 · 길드 전용</small><h1>두더지도굴단 꽃 도감 🌱</h1>',
+              '<h1>🍀두더지도굴단 전용꽃도감🍀</h1>'
+          )
+
+          # Replace the old footer notice inside the loaded app source immediately before render.
+          marker = "s=s.replace(/\\[?Google Sheets 데이터 기준 · 웹에서는 조회만 가능합니다\\.?\\]?/g,'두더지도굴단원의 즐겜을 위하여🍀');"
+          render = 'document.open();document.write(s);document.close();'
+          if marker not in s and render in s:
+              s = s.replace(render, marker + '\n    ' + render, 1)
+
+          if s == original:
+              print('No changes needed')
+          else:
+              p.write_text(s, encoding='utf-8')
+              print('Patched index.html')
+          PY
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "상단 타이틀과 하단 문구만 수정"
+          git push
