@@ -20,8 +20,8 @@ jobs:
           from pathlib import Path
           p = Path('index.html')
           s = p.read_text(encoding='utf-8')
-          old = '<header><div class=\\"brand\\"><h1>🍀두더지도굴단 전용꽃도감🍀</h1></div><button class=\\"refresh\\" id=\\"refresh\\">↻ 새로고침</button></header>'
-          new = '<header><div class=\\"brand\\"><small>더 코지 플로리스트 · 길드 전용</small><h1>두더지도굴단 꽃 도감 🌱</h1></div><button class=\\"refresh\\" id=\\"refresh\\">↻ 새로고침</button></header>'
+          old = '<header><div class="brand"><h1>🍀두더지도굴단 전용꽃도감🍀</h1></div><button class="refresh" id="refresh">↻ 새로고침</button></header>'
+          new = '<header><div class="brand"><small>더 코지 플로리스트 · 길드 전용</small><h1>두더지도굴단 꽃 도감 🌱</h1></div><button class="refresh" id="refresh">↻ 새로고침</button></header>'
           if old not in s:
               raise SystemExit('expected broken matcher not found; aborting without touching file')
           s = s.replace(old, new, 1)
