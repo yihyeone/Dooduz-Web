@@ -1,0 +1,47 @@
+name: Fix sticky gap and width
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-sticky-gap-width.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace temporary gap fill with aligned sticky layout
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old="    s=s.replace('</head>','<style id=\"dooduz-marked-gap-fill\">.tools{background:#fffaf0!important;box-shadow:0 -42px 0 0 #fffaf0!important}</style></head>');"
+          new="    s=s.replace('</head>','<style id=\"dooduz-sticky-aligned\">.tools{top:calc(env(safe-area-inset-top,0px) + 54px)!important;margin-left:-15px!important;margin-right:-15px!important;padding-left:15px!important;padding-right:15px!important;background:#fffaf0!important;box-shadow:none!important}</style></head>');"
+          if old not in s:
+              raise SystemExit('current gap patch not found; aborting without changes')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Verify wrapper JavaScript syntax
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          s=Path('index.html').read_text(encoding='utf-8')
+          m=re.search(r'<script>(.*)</script>',s,re.S)
+          if not m: raise SystemExit('script not found')
+          Path('/tmp/index-wrapper.js').write_text(m.group(1),encoding='utf-8')
+          assert 'box-shadow:0 -42px' not in s
+          assert 'width:100vw' not in s
+          assert 'dooduz-sticky-aligned' in s
+          PY
+          node --check /tmp/index-wrapper.js
+      - name: Commit patch
+        run: |
+          rm .github/workflows/fix-sticky-gap-width.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html .github/workflows/fix-sticky-gap-width.yml
+          git commit -m '고정탭과 검색필터 간격 및 가로폭 정렬'
+          git push
