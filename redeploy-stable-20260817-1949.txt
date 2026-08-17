@@ -1,0 +1,1 @@
+Trigger production redeploy from the last known-good sticky layout. No UI code changes.
