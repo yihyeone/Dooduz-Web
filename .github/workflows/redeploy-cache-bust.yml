@@ -1,0 +1,36 @@
+name: Redeploy with cache bust
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/redeploy-cache-bust.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bump app cache key
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          old="./app.html?v=20260815"
+          new="./app.html?v=20260817-1945"
+          if old not in s:
+              raise SystemExit('cache key target not found')
+          p.write_text(s.replace(old,new,1),encoding='utf-8')
+          PY
+      - name: Commit and clean workflow
+        run: |
+          rm -f .github/workflows/redeploy-cache-bust.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html .github/workflows/redeploy-cache-bust.yml
+          git commit -m "정상 화면 재배포 및 캐시 갱신"
+          git push
