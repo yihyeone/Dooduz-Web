@@ -59,7 +59,8 @@ const imageAliases=[["적염 괴화","적염규화"],["얕은 여울의 모래�
     s=s.replace('<div class="meta"><span>\${esc(f.g)}</span><strong>','<div class="meta"><span class="grade-badge grade-\${esc(f.g)}">\${esc(f.g)}</span><strong>');
     s=s.replace('document.getElementById("g").textContent=f.g;','document.getElementById("g").textContent=f.g;document.getElementById("g").className="grade grade-"+f.g;');
     s=s.replace(/\[?Google Sheets 데이터 기준 · 웹에서는 조회만 가능합니다\.?\]?/g,'두더지도굴단원의 즐겜을 위하여🍀');
-    document.open();document.write(s);document.close();
+    s=s.replace('</head>','<style id="dooduz-fixed-brown-full">\n/* DOODUZ_FIXED_BROWN_FULL */\n:root{--dooduz-brown:#4a2b1d}\n.main-header{background:var(--dooduz-brown)!important;background-image:none!important;border-radius:0!important;box-shadow:none!important}\n.stats{position:relative!important;z-index:1!important;box-shadow:0 0 0 100vmax var(--dooduz-brown)!important;clip-path:inset(-18px -100vmax)!important}\n.tools{position:relative!important;z-index:1!important;background:var(--dooduz-brown)!important;background-image:none!important;box-shadow:0 0 0 100vmax var(--dooduz-brown)!important;clip-path:inset(-18px -100vmax)!important;margin-top:0!important;margin-bottom:0!important;padding-top:14px!important;padding-bottom:16px!important}\n.tools .filter-label,.tools>span,.grade-filters+span{color:#fffaf0!important}\n.search{background:#fff!important}\n</style></head>');
+document.open();document.write(s);document.close();
   }catch(e){document.body.innerHTML='<div style="font-family:sans-serif;padding:30px">페이지를 불러오지 못했습니다. 새로고침해주세요.</div>'}
 })();
 </script></body></html>
