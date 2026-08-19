@@ -26,9 +26,9 @@ jobs:
           m = re.search(r'(\s+const missingImages=)(\{.*?\})(;\n\s+const imageAliases=)', s, re.S)
           assert m, 'missingImages marker not found'
           images = json.loads(m.group(2))
-          images['블루스타 납매'] = './images/aug19/01.webp?v=20260819c'
-          images['블루스타 남매'] = './images/aug19/01.webp?v=20260819c'
-          images['불꽃심장 꿈조개'] = './images/aug19/05.webp?v=20260819c'
+          images['블루스타 납매'] = './images/aug19/01.webp?v=20260819d'
+          images['블루스타 남매'] = './images/aug19/01.webp?v=20260819d'
+          images['불꽃심장 꿈조개'] = './images/aug19/05.webp?v=20260819d'
           new_obj = json.dumps(images, ensure_ascii=False, separators=(',',':'))
           s2 = s[:m.start()] + m.group(1) + new_obj + m.group(3) + s[m.end():]
           assert s2.count('블루스타 납매') >= 1
@@ -51,3 +51,5 @@ jobs:
           git add index.html
           git commit -m '블루스타 납매·불꽃심장 꿈조개 이미지 직접 연결'
           git push
+
+# rerun: 2026-08-19T22:30+09:00
