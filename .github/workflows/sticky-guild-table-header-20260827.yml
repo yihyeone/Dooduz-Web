@@ -1,0 +1,37 @@
+name: Sticky guild table header
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sticky-guild-table-header-20260827.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Make guild table column header sticky
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html')
+          s=p.read_text(encoding='utf-8')
+          old='header{position:sticky;top:0;background:#f7f1e7f5;z-index:3;padding:10px 0}'
+          new='header{position:static;background:#f7f1e7;padding:10px 0}'
+          assert old in s, 'header style marker not found'
+          s=s.replace(old,new,1)
+          old2='.head{min-height:36px;background:#f1e8dc;font-size:11px;font-weight:700}'
+          new2='.head{position:sticky;top:0;z-index:8;min-height:36px;background:#f1e8dc;font-size:11px;font-weight:700;box-shadow:0 1px 0 #e1d5c9}'
+          assert old2 in s, 'table head style marker not found'
+          s=s.replace(old2,new2,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add guild-test-v2.html
+          git commit -m '길드전 표 컬럼 헤더 스크롤 고정' || exit 0
+          git push
