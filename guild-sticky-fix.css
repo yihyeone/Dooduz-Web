@@ -1,5 +1,5 @@
-main{padding-top:118px!important}
+main{padding-top:58px!important}
 .titlebar{position:fixed!important;top:env(safe-area-inset-top,0px)!important;left:50%!important;transform:translateX(-50%)!important;width:min(720px,100%)!important;z-index:60!important;margin:0!important;padding:8px 14px!important;background:#f7f1e7f7!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-nav#nav{position:fixed!important;top:calc(env(safe-area-inset-top,0px) + 50px)!important;left:50%!important;transform:translateX(-50%)!important;width:min(720px,100%)!important;z-index:59!important;margin:0!important;padding:8px 14px!important;background:#f7f1e7f7!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+nav#nav{position:sticky!important;top:calc(env(safe-area-inset-top,0px) + 50px)!important;z-index:59!important;margin:0 -14px!important;padding:8px 14px!important;background:#f7f1e7f7!important;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .head{position:sticky!important;top:calc(env(safe-area-inset-top,0px) + 104px)!important;z-index:58!important;background:#f1e8dc!important;box-shadow:0 1px 0 #e1d5c9!important}
-@media(max-width:720px){.titlebar,nav#nav{width:100%!important}}
+@media(max-width:720px){.titlebar{width:100%!important}}
