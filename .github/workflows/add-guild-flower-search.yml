@@ -1,0 +1,36 @@
+name: Add guild flower search
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/add-guild-flower-search.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add flower search between status and filters
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html')
+          s=p.read_text(encoding='utf-8')
+          if 'id="flowerSearch"' not in s:
+              s=s.replace('</section></header><nav id="nav">','</section><div class="guild-search"><span class="guild-search-icon">⌕</span><input id="flowerSearch" type="search" inputmode="search" autocomplete="off" placeholder="꽃 이름 검색" aria-label="꽃 이름 검색"></div></header><nav id="nav">')
+              s=s.replace('.bar{display:flex;', '.guild-search{display:flex;align-items:center;gap:8px;margin:12px 0 2px;padding:0 13px;height:44px;border:1px solid #e7ddd2;border-radius:13px;background:#fffdf9}.guild-search-icon{font-size:19px;color:#a76a00;line-height:1}.guild-search input{width:100%;border:0;outline:0;background:transparent;color:#34251f;font:inherit;font-size:14px}.guild-search input::placeholder{color:#b2a49a}.guild-search input::-webkit-search-cancel-button{opacity:.55}.bar{display:flex;')
+              s=s.replace("let D=BASE.map(x=>({...x,h:[]})),f='all';", "let D=BASE.map(x=>({...x,h:[]})),f='all',q='';")
+              s=s.replace("a=a.filter(x=>f==='all'||f===st(x));", "a=a.filter(x=>(f==='all'||f===st(x))&&(!q||n(x.name).includes(q)));")
+              s=s.replace('sort.onchange=render;', "sort.onchange=render;flowerSearch.oninput=e=>{q=n(e.target.value);render()};")
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          if git diff --quiet -- guild-test-v2.html; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add guild-test-v2.html
+          git commit -m '길드전 임무표 꽃 검색 추가'
+          git push
