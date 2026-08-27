@@ -1,0 +1,43 @@
+name: Extend guild mission table with SSR+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/extend-guild-ssr-ur.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch guild mission data merge
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("const BASE=[...byName.values()].filter(v=>v.thumb&&v.obs.length).map(v=>{const scores=v.obs.map(o=>o.score),scoreMin=Math.min(...scores),scoreMax=Math.max(...scores);return {...v,scoreMin,scoreMax,score:scoreMax}});let D=BASE.map(x=>({...x,h:[]})),f='all';",
+                      "const BASE=[...byName.values()].filter(v=>v.obs.length).map(v=>{const scores=v.obs.map(o=>o.score),scoreMin=Math.min(...scores),scoreMax=Math.max(...scores);return {...v,scoreMin,scoreMax,score:scoreMax,known:true}});let D=BASE.map(x=>({...x,h:[]})),f='all';")
+          s=s.replace("function st(x){return !x.h.length||x.scoreMax<=10?'delete':x.scoreMax>=23?'high':'keep'}function scoreText(x){return x.scoreMin===x.scoreMax?String(x.scoreMax):x.scoreMin+'~'+x.scoreMax}",
+                      "function st(x){if(!x.h.length)return'delete';if(!x.known)return'keep';return x.scoreMax<=10?'delete':x.scoreMax>=23?'high':'keep'}function scoreText(x){if(!x.known)return'-';return x.scoreMin===x.scoreMax?String(x.scoreMax):x.scoreMin+'~'+x.scoreMax}")
+          old="<span class=\"thumbwrap\"><img src=\"${x.thumb}\" alt=\"${x.name}\" decoding=\"async\" onerror=\"this.closest('.row').remove()\"></span>"
+          new="<span class=\"thumbwrap\">${x.thumb?`<img src=\"${x.thumb}\" alt=\"${x.name}\" decoding=\"async\">`:`<span style=\"font-size:10px;color:#9b8a7d;font-weight:800\">${x.grade||''}</span>`}</span>"
+          s=s.replace(old,new)
+          oldfetch="a=pc(await r.text()),h=a[0].map(n),ni=h.findIndex(x=>x=='꽃 이름'),hi=h.findIndex(x=>x.includes('보유자')),m=new Map;a.slice(1).forEach(r=>m.set(n(r[ni]),String(r[hi]||'').split(',').map(n).filter(Boolean)));D=BASE.map(x=>({...x,h:m.get(n(x.name))||[]}));sync.textContent='꽃 보유현황 연동 완료 · '+m.size+'종 기준'"
+          newfetch="a=pc(await r.text()),h=a[0].map(n),ni=h.findIndex(x=>x=='꽃 이름'),hi=h.findIndex(x=>x.includes('보유자')),gi=h.findIndex(x=>x.includes('등급')),m=new Map,gm=new Map;a.slice(1).forEach(r=>{let nm=n(r[ni]);if(!nm)return;let hs=String(r[hi]||'').split(',').map(n).filter(Boolean),g=gi>=0?n(r[gi]).toUpperCase():'';m.set(nm,hs);gm.set(nm,g)});let bm=new Map(BASE.map(x=>[n(x.name),x]));for(const [nm,g] of gm){if(g==='SSR'||g==='UR'){if(!bm.has(nm))bm.set(nm,{name:nm,thumb:'',obs:[],scoreMin:null,scoreMax:null,score:null,known:false,grade:g});else bm.get(nm).grade=g}}D=[...bm.values()].map(x=>({...x,h:m.get(n(x.name))||[]}));sync.textContent='꽃 보유현황 연동 완료 · SSR↑ '+D.filter(x=>x.grade==='SSR'||x.grade==='UR').length+'종 포함'"
+          if oldfetch not in s:
+              raise SystemExit('fetch anchor not found')
+          s=s.replace(oldfetch,newfetch)
+          s=s.replace("꽃 이름은 꽃 보유현황 시트 기준이며, 미보유 꽃과 10점 이하는 모두 ‘삭제’, 23점 이상은 ‘고득점’으로 표시합니다.","꽃 이름은 꽃 보유현황 시트 기준이며, SSR 이상 꽃은 점수 미확인 항목도 모두 표시합니다. 미보유 꽃과 10점 이하는 ‘삭제’, 23점 이상은 ‘고득점’으로 표시합니다.")
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          if git diff --quiet -- guild-test-v2.html; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add guild-test-v2.html
+          git commit -m '길드전 SSR 이상 미확인 꽃 전체 추가'
+          git push
