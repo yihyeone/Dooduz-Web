@@ -1,0 +1,37 @@
+name: Fix guild colors and sorting
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-guild-colors-sort.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch UI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html'); s=p.read_text()
+          # Make filter buttons and table tags share exact palette.
+          s=s.replace("nav button[data-f=delete].on{background:#c94f4f}","nav button[data-f=delete]{background:#f7dfdf;color:#c94f4f}nav button[data-f=delete].on{background:#c94f4f;color:white}nav button[data-f=keep]{background:#e1f1e8;color:#2f7d59}nav button[data-f=keep].on{background:#2f7d59;color:white}nav button[data-f=high]{background:#fff0cc;color:#a76a00;font-weight:800}nav button[data-f=high].on{background:#a76a00;color:white}")
+          # Restore sort options.
+          s=s.replace('<select id="sort"><option>점수 높은순</option></select>','<select id="sort"><option value="score">점수 높은순</option><option value="name">가나다순</option><option value="holders">보유자 적은순</option><option value="holdersDesc">보유자 많은순</option></select>')
+          # Sort before filtering/rendering.
+          old="function render(){let a=D.filter(x=>(f==='all'||f===st(x))&&(!q||x.name.includes(q)));"
+          new="function render(){let a=[...D],sv=sort.value;if(sv==='name')a.sort((a,b)=>a.name.localeCompare(b.name,'ko'));else if(sv==='holders')a.sort((a,b)=>a.h.length-b.h.length||a.name.localeCompare(b.name,'ko'));else if(sv==='holdersDesc')a.sort((a,b)=>b.h.length-a.h.length||a.name.localeCompare(b.name,'ko'));else a.sort((a,b)=>(b.known?b.scoreMax:-1)-(a.known?a.scoreMax:-1)||a.name.localeCompare(b.name,'ko'));a=a.filter(x=>(f==='all'||f===st(x))&&(!q||x.name.includes(q)));"
+          if old not in s: raise SystemExit('render anchor missing')
+          s=s.replace(old,new,1)
+          s=s.replace("flowerSearch.oninput=e=>{q=n(e.target.value);render()};","sort.onchange=render;flowerSearch.oninput=e=>{q=n(e.target.value);render()};",1)
+          p.write_text(s)
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add guild-test-v2.html
+          git commit -m '길전 분류색 통일 및 정렬 옵션 복구' || exit 0
+          git push
