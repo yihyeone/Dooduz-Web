@@ -67,7 +67,10 @@ const imageAliases=
     s=s.replace('<body>','<body onscroll="document.getElementById(&quot;dooduzTopBtn&quot;).classList.toggle(&quot;show&quot;,window.scrollY&gt;1100)">');
     s=s.replace('</body>','<button id="dooduzTopBtn" class="dooduz-top-btn" type="button" aria-label="맨 위로" onclick="window.scrollTo({top:0,behavior:&quot;smooth&quot;})"><span aria-hidden="true">↑</span><small>TOP</small></button></body>');
     s=s.replace('<div class="tools">','<a id="dooduz-guild-beta-entry" href="./guild-test.html" style="display:flex;align-items:center;gap:7px;margin:8px 0 10px;padding:11px 13px;border:1px solid #e3d6c7;border-radius:12px;background:#fffdf9;color:#4a2b1d;text-decoration:none;font-size:13px"><strong>⚔ 길드전 임무표</strong><span style="font-size:10px;font-weight:800;padding:3px 6px;border-radius:999px;background:#efe4d5;color:#7a5946">BETA</span><span style="margin-left:auto;color:#9a8171;font-size:16px">›</span></a><div class="tools">');
-    document.open();document.write(s);document.close();
+    s=s.replace('</head>', `<style id="dooduz-sticky-gap-fix">
+/* Fill transparent seams between sticky top tabs/search/filter controls */
+[style*="position: sticky"], [style*="position:sticky"]{background-color:#f7f1e7}
+</style></head>`);document.open();document.write(s);document.close();
   }catch(e){document.body.innerHTML='<div style="font-family:sans-serif;padding:30px">페이지를 불러오지 못했습니다. 새로고침해주세요.</div>'}
 })();
 </script></body></html>
