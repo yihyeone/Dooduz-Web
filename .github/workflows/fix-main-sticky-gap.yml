@@ -1,5 +1,9 @@
 name: Fix main catalog sticky gap
-on: workflow_dispatch
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-main-sticky-gap.yml'
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
@@ -13,14 +17,13 @@ jobs:
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text()
-          marker="const missingImages="
-          # Inject CSS into loaded app HTML immediately before document.write by replacing closing head.
           old="document.open();document.write(s);document.close();"
           css="""<style id=\"dooduz-sticky-gap-fix\">\n/* Fill transparent seams between sticky top tabs/search/filter controls */\n[style*=\"position: sticky\"], [style*=\"position:sticky\"]{background-color:#f7f1e7}\n</style>"""
           new="s=s.replace('</head>', `"+css+"</head>`);document.open();document.write(s);document.close();"
           if old not in s:
               raise SystemExit('loader write marker not found')
-          s=s.replace(old,new,1)
+          if 'dooduz-sticky-gap-fix' not in s:
+              s=s.replace(old,new,1)
           p.write_text(s)
           PY
       - name: Commit
