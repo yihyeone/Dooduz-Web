@@ -1,0 +1,33 @@
+name: Restore guild score range display
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-guild-score-range-20260828.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore min max score display
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html')
+          s=p.read_text(encoding='utf-8')
+          old="<div class=\"score\">${x.known?x.scoreMax:'-'}</div>"
+          new="<div class=\"score\">${x.known?(x.scoreMin===x.scoreMax?x.scoreMax:x.scoreMin+'~'+x.scoreMax):'-'}</div>"
+          if old in s:
+              s=s.replace(old,new,1)
+              p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          if git diff --quiet -- guild-test-v2.html; then exit 0; fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add guild-test-v2.html
+          git commit -m '길전 동일 꽃 점수 범위 표시 복구'
+          git push
