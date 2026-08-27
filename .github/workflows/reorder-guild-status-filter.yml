@@ -1,0 +1,34 @@
+name: Reorder guild status and filter
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/reorder-guild-status-filter.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Move filter below status summary
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html')
+          s=p.read_text(encoding='utf-8')
+          old='</section><nav id="nav"><button class="on" data-f="all">전체</button><button data-f="high">고득점</button><button data-f="keep">유지</button><button data-f="delete">삭제</button></nav></header><div class="bar">'
+          new='</section></header><nav id="nav"><button class="on" data-f="all">전체</button><button data-f="high">고득점</button><button data-f="keep">유지</button><button data-f="delete">삭제</button></nav><div class="bar">'
+          if old not in s:
+              raise SystemExit('target pattern not found')
+          s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add guild-test-v2.html
+          git commit -m '길드전 현황 다음 필터 순서로 변경'
+          git push
