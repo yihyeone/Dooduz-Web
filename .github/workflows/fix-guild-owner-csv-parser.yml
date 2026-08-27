@@ -1,0 +1,36 @@
+name: Fix guild owner CSV parser
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-guild-owner-csv-parser.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch quoted CSV parser
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html')
+          s=p.read_text(encoding='utf-8')
+          old="function n(s){return String(s||'').trim()}function st(x)"
+          new="function n(s){return String(s||'').trim().replace(/\\s+/g,' ')}function pc(t){let a=[],r=[],c='',q=false;for(let i=0;i<t.length;i++){let x=t[i],nx=t[i+1];if(x==='\"'){if(q&&nx==='\"'){c+='\"';i++}else q=!q}else if(x===','&&!q){r.push(c);c=''}else if((x==='\\n'||x==='\\r')&&!q){if(x==='\\r'&&nx==='\\n')i++;r.push(c);if(r.some(v=>v!==''))a.push(r);r=[];c=''}else c+=x}if(c||r.length){r.push(c);a.push(r)}return a}function st(x)"
+          if old not in s: raise SystemExit('function anchor not found')
+          s=s.replace(old,new,1)
+          old2="let text=await fetch(CSV+'&_='+Date.now()).then(r=>r.text()),rows=text.split(/\\r?\\n/).map(r=>r.split(',')),h=rows[0],ni=h.findIndex(x=>x.includes('꽃 이름')),hi=h.findIndex(x=>x.includes('보유자')),gi=h.findIndex(x=>x.includes('등급')),m=new Map,gm=new Map;rows.slice(1).forEach(r=>{let nm=n(r[ni]);if(nm){m.set(nm,n(r[hi]).split(/[,，]/).filter(Boolean));gm.set(nm,n(r[gi]).toUpperCase())}});"
+          new2="let text=await fetch(CSV+'&_='+Date.now(),{cache:'no-store'}).then(r=>r.text()),rows=pc(text),h=rows[0].map(n),ni=h.findIndex(x=>x==='꽃 이름'||x.includes('꽃 이름')),hi=h.findIndex(x=>x.includes('보유자')),gi=h.findIndex(x=>x.includes('등급')),m=new Map,gm=new Map;rows.slice(1).forEach(r=>{let nm=n(r[ni]);if(nm){m.set(nm,String(r[hi]||'').split(',').map(n).filter(Boolean));gm.set(nm,n(r[gi]).toUpperCase())}});"
+          if old2 not in s: raise SystemExit('fetch parser anchor not found')
+          s=s.replace(old2,new2,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add guild-test-v2.html
+          git commit -m '길전 보유자 CSV 파싱을 메인 도감 기준으로 수정' || exit 0
+          git push
