@@ -1,0 +1,36 @@
+name: Guild default delete and catalog image fallback
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/guild-default-delete-fallback-image.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch guild page
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html'); s=p.read_text()
+          s=s.replace('<button class="on" data-f="all">전체</button><button data-f="high">고득점</button><button data-f="keep">유지</button><button data-f="delete">삭제</button>', '<button data-f="all">전체</button><button data-f="high">고득점</button><button data-f="keep">유지</button><button class="on" data-f="delete">삭제</button>')
+          s=s.replace(")),f='all',q=''", ")),f='delete',q=''")
+          # Catalog image fallback: use the same flower_NNN.webp mapping/order exposed by the ownership CSV.
+          old="let hs=String(r[hi]||'').split(',').map(n).filter(Boolean),g=gi>=0?n(r[gi]).toUpperCase():'';m.set(nm,hs);gm.set(nm,g)"
+          new="let hs=String(r[hi]||'').split(',').map(n).filter(Boolean),g=gi>=0?n(r[gi]).toUpperCase():'';m.set(nm,hs);gm.set(nm,g);if(!window.CATALOG_IMG)window.CATALOG_IMG=new Map;window.CATALOG_IMG.set(nm,'assets/flower_'+String(a.indexOf(r)).padStart(3,'0')+'.webp')"
+          s=s.replace(old,new)
+          old2="if(!bm.has(nm))bm.set(nm,{name:nm,thumb:'',obs:[],scoreMin:null,scoreMax:null,score:null,known:false,grade:g});else bm.get(nm).grade=g"
+          new2="if(!bm.has(nm))bm.set(nm,{name:nm,thumb:(window.CATALOG_IMG&&window.CATALOG_IMG.get(nm))||'',obs:[],scoreMin:null,scoreMax:null,score:null,known:false,grade:g});else{bm.get(nm).grade=g;if(!bm.get(nm).thumb)bm.get(nm).thumb=(window.CATALOG_IMG&&window.CATALOG_IMG.get(nm))||''}"
+          s=s.replace(old2,new2)
+          p.write_text(s)
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add guild-test-v2.html
+          git commit -m '길전 기본 삭제 필터 및 도감 이미지 fallback 적용' || exit 0
+          git push
