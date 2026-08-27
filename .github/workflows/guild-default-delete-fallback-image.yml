@@ -10,27 +10,43 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch guild page
+      - name: Build catalog image map and patch guild page
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('guild-test-v2.html'); s=p.read_text()
-          s=s.replace('<button class="on" data-f="all">전체</button><button data-f="high">고득점</button><button data-f="keep">유지</button><button data-f="delete">삭제</button>', '<button data-f="all">전체</button><button data-f="high">고득점</button><button data-f="keep">유지</button><button class="on" data-f="delete">삭제</button>')
-          s=s.replace(")),f='all',q=''", ")),f='delete',q=''")
-          # Catalog image fallback: use the same flower_NNN.webp mapping/order exposed by the ownership CSV.
-          old="let hs=String(r[hi]||'').split(',').map(n).filter(Boolean),g=gi>=0?n(r[gi]).toUpperCase():'';m.set(nm,hs);gm.set(nm,g)"
-          new="let hs=String(r[hi]||'').split(',').map(n).filter(Boolean),g=gi>=0?n(r[gi]).toUpperCase():'';m.set(nm,hs);gm.set(nm,g);if(!window.CATALOG_IMG)window.CATALOG_IMG=new Map;window.CATALOG_IMG.set(nm,'assets/flower_'+String(a.indexOf(r)).padStart(3,'0')+'.webp')"
-          s=s.replace(old,new)
-          old2="if(!bm.has(nm))bm.set(nm,{name:nm,thumb:'',obs:[],scoreMin:null,scoreMax:null,score:null,known:false,grade:g});else bm.get(nm).grade=g"
-          new2="if(!bm.has(nm))bm.set(nm,{name:nm,thumb:(window.CATALOG_IMG&&window.CATALOG_IMG.get(nm))||'',obs:[],scoreMin:null,scoreMax:null,score:null,known:false,grade:g});else{bm.get(nm).grade=g;if(!bm.get(nm).thumb)bm.get(nm).thumb=(window.CATALOG_IMG&&window.CATALOG_IMG.get(nm))||''}"
-          s=s.replace(old2,new2)
-          p.write_text(s)
+          import re, json
+
+          app = Path('app.html').read_text(encoding='utf-8')
+          m = re.search(r'const IMAGES=(\{.*?\});\s*const ', app, re.S)
+          if not m:
+              m = re.search(r'const IMAGES=(\{.*?\});', app, re.S)
+          if not m:
+              raise SystemExit('IMAGES map not found in app.html')
+          images = json.loads(m.group(1))
+          Path('guild-catalog-images.js').write_text('window.GUILD_CATALOG_IMAGES='+json.dumps(images, ensure_ascii=False, separators=(',',':'))+';', encoding='utf-8')
+
+          p=Path('guild-test-v2.html')
+          s=p.read_text(encoding='utf-8')
+          if '<script src="guild-catalog-images.js"></script>' not in s:
+              anchor='<script src="guild-data-1.js"></script>'
+              s=s.replace(anchor,'<script src="guild-catalog-images.js"></script>'+anchor,1)
+
+          # remove the previously incorrect fake assets/flower_NNN.webp mapping
+          s=re.sub(r";if\(!window\.CATALOG_IMG\)window\.CATALOG_IMG=new Map;window\.CATALOG_IMG\.set\(nm,'assets/flower_'\+String\(a\.indexOf\(r\)\)\.padStart\(3,'0'\)\+'\\.webp'\)", '', s)
+          s=s.replace("thumb:(window.CATALOG_IMG&&window.CATALOG_IMG.get(nm))||''", "thumb:(window.GUILD_CATALOG_IMAGES&&window.GUILD_CATALOG_IMAGES[nm])||''")
+          s=s.replace("if(!bm.get(nm).thumb)bm.get(nm).thumb=(window.CATALOG_IMG&&window.CATALOG_IMG.get(nm))||''", "if(!bm.get(nm).thumb)bm.get(nm).thumb=(window.GUILD_CATALOG_IMAGES&&window.GUILD_CATALOG_IMAGES[nm])||''")
+          p.write_text(s,encoding='utf-8')
+
+          # validation: known catalog image map exists and guild page points to it
+          assert len(images) > 100, len(images)
+          assert 'guild-catalog-images.js' in s
+          assert 'window.GUILD_CATALOG_IMAGES[nm]' in s
           PY
           git diff --check
       - name: Commit
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add guild-test-v2.html
-          git commit -m '길전 기본 삭제 필터 및 도감 이미지 fallback 적용' || exit 0
+          git add guild-test-v2.html guild-catalog-images.js
+          git commit -m '길전 미확인 꽃에 실제 도감 이미지 연결' || exit 0
           git push
