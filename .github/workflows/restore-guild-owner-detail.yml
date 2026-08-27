@@ -1,0 +1,35 @@
+name: Restore guild owner detail
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/restore-guild-owner-detail.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch owner detail UI
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html')
+          s=p.read_text()
+          if '.detail{grid-column:1/-1' not in s:
+              s=s.replace('.high{background:#fff0cc;color:#a76a00;font-weight:800}', '.high{background:#fff0cc;color:#a76a00;font-weight:800}.detail{grid-column:1/-1;margin:0 -8px;padding:9px 12px;background:#f8f3ed;border-top:1px dashed #dfd2c6;font-size:12px;display:none}.row.open .detail{display:block}')
+          old="<button class=\"hold ${x.h.length?'':'zero'}\">${x.h.length}명</button><div class=\"judge ${z==='delete'?'del':z}\">${z==='delete'?'삭제':z==='high'?'고득점':'유지'}</div></div>`}).join('');total.textContent=D.length;"
+          new="<button class=\"hold ${x.h.length?'':'zero'}\" type=\"button\">${x.h.length}명</button><div class=\"judge ${z==='delete'?'del':z}\">${z==='delete'?'삭제':z==='high'?'고득점':'유지'}</div><div class=\"detail\">${x.h.length?'<b>보유자</b> · '+x.h.join(' · '):'<b>보유자 없음</b>'}</div></div>`}).join('');document.querySelectorAll('.hold').forEach(b=>b.addEventListener('click',()=>b.closest('.row').classList.toggle('open')));total.textContent=D.length;"
+          if old not in s:
+              raise SystemExit('render anchor not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add guild-test-v2.html
+          git commit -m '길전 보유인원 닉네임 펼치기 복구' || exit 0
+          git push
