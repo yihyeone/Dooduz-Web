@@ -1,0 +1,37 @@
+name: Patch guild sticky UI
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-guild-sticky-ui.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch guild mission page sticky controls
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace('.titlebar{display:flex;align-items:center;gap:8px}', '.titlebar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:8px;margin:0 -14px;padding:8px 14px;background:#f7f1e7f7;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}')
+          s=s.replace('nav{display:flex;gap:6px;overflow:auto}', 'nav{position:sticky;top:50px;z-index:29;display:flex;gap:6px;overflow:auto;margin:0 -14px;padding:8px 14px;background:#f7f1e7f7;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}')
+          s=s.replace('.head{position:sticky;top:0;z-index:8;', '.head{position:sticky;top:104px;z-index:28;')
+          if '.guild-top-btn{' not in s:
+              s=s.replace('.note{font-size:11px;color:#8c7b70;line-height:1.5;margin-top:10px}</style>', '.note{font-size:11px;color:#8c7b70;line-height:1.5;margin-top:10px}.guild-top-btn{position:fixed;right:max(16px,calc((100vw - 720px)/2 + 16px));bottom:calc(24px + env(safe-area-inset-bottom,0px));z-index:50;width:52px;height:52px;border:1px solid rgba(107,66,31,.24);border-radius:50%;background:rgba(74,43,29,.94);color:#fffaf0;box-shadow:0 8px 24px rgba(54,31,17,.22);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transform:translateY(8px);transition:opacity .18s ease,transform .18s ease;cursor:pointer}.guild-top-btn.show{opacity:1;pointer-events:auto;transform:translateY(0)}.guild-top-btn span{font-size:20px;line-height:16px;font-weight:800}.guild-top-btn small{font-size:8px;line-height:11px;font-weight:900;letter-spacing:.04em;color:#fffaf0}</style>')
+          if 'id="guildTopBtn"' not in s:
+              s=s.replace('</main>\n<script src=', '</main><button id="guildTopBtn" class="guild-top-btn" type="button" aria-label="맨 위로" onclick="window.scrollTo({top:0,behavior:\'smooth\'})"><span aria-hidden="true">↑</span><small>TOP</small></button><script>addEventListener(\'scroll\',()=>document.getElementById(\'guildTopBtn\').classList.toggle(\'show\',scrollY>700),{passive:true})</script>\n<script src=')
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          if git diff --quiet -- guild-test-v2.html; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add guild-test-v2.html
+          git commit -m '길드전 고정 필터 및 TOP 버튼 추가'
+          git push
