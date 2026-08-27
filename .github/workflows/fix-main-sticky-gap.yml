@@ -1,0 +1,32 @@
+name: Fix main catalog sticky gap
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch index loader with runtime gap cover
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          marker="const missingImages="
+          # Inject CSS into loaded app HTML immediately before document.write by replacing closing head.
+          old="document.open();document.write(s);document.close();"
+          css="""<style id=\"dooduz-sticky-gap-fix\">\n/* Fill transparent seams between sticky top tabs/search/filter controls */\n[style*=\"position: sticky\"], [style*=\"position:sticky\"]{background-color:#f7f1e7}\n</style>"""
+          new="s=s.replace('</head>', `"+css+"</head>`);document.open();document.write(s);document.close();"
+          if old not in s:
+              raise SystemExit('loader write marker not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git commit -m "메인 도감 고정영역 투명 여백 제거" || exit 0
+          git push
