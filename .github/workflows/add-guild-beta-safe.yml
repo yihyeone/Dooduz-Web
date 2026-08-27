@@ -44,3 +44,4 @@ jobs:
           git add index.html
           git commit -m '웹도감 홈 길드전 BETA 버튼 안전 연결'
           git push
+# safe static insertion only
