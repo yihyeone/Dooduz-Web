@@ -1,0 +1,1 @@
+Trigger clean Vercel deployment after restoring the last known-good web guide state.
