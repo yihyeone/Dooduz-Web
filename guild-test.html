@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f7f1e7">
+<title>두더지도굴단 길드전 임무표 BETA</title>
+<style>
+:root{--bg:#f7f1e7;--card:#fffdf9;--brown:#4a2b1d;--muted:#8c7b70;--line:#e7ddd2;--green:#2f7d59;--red:#c94f4f;--orange:#d77a2b;--purple:#7557b7;--gold:#a76a00}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#34251f;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif}.wrap{max-width:720px;margin:0 auto;padding:18px 14px 80px}.head{position:sticky;top:0;z-index:10;background:rgba(247,241,231,.96);backdrop-filter:blur(10px);padding:12px 0 10px}.title{font-size:20px;font-weight:850;color:var(--brown);letter-spacing:-.5px}.sub{font-size:12px;color:var(--muted);margin-top:3px}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 0}.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 8px;text-align:center}.stat b{display:block;font-size:19px;color:var(--brown)}.stat span{font-size:11px;color:var(--muted)}.filters{display:flex;gap:6px;overflow:auto;padding-bottom:2px}.filter{border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 11px;font-size:12px;white-space:nowrap;color:#65544a}.filter.on{background:var(--brown);color:#fff;border-color:var(--brown)}.sortrow{display:flex;justify-content:space-between;align-items:center;margin:10px 2px 7px;font-size:11px;color:var(--muted)}select{border:1px solid var(--line);border-radius:8px;background:#fff;padding:6px 8px;color:#55443a}.table{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}.tr{display:grid;grid-template-columns:minmax(0,1fr) 52px 56px 62px;align-items:center;min-height:52px;border-top:1px solid #eee6dd;padding:0 8px;gap:3px}.tr:first-child{border-top:0}.th{min-height:36px;background:#f1e8dc;font-size:11px;font-weight:750;color:#6f5c50}.name{font-size:13px;font-weight:700;line-height:1.3;word-break:keep-all}.score{text-align:center;font-weight:850;font-size:14px}.score.high{color:var(--gold)}.holders{justify-self:center;border:0;background:#f0e7dc;border-radius:999px;min-width:42px;padding:6px 5px;font-size:12px;font-weight:800;color:var(--brown)}.holders.zero{background:#f7dfdf;color:var(--red)}.judge{text-align:center;font-size:11px;font-weight:850;border-radius:7px;padding:6px 3px}.keep{background:#e1f1e8;color:var(--green)}.highTag{background:#fff0cc;color:var(--gold)}.delete{background:#f7dfdf;color:var(--red)}.watch{background:#eee7f8;color:var(--purple)}.detail{grid-column:1/-1;margin:0 -8px;padding:9px 12px;background:#f8f3ed;border-top:1px dashed #dfd2c6;font-size:12px;color:#59483e;display:none}.tr.open .detail{display:block}.empty{text-align:center;padding:40px 15px;color:var(--muted);font-size:13px}.note{margin-top:10px;font-size:11px;line-height:1.5;color:var(--muted)}.beta{display:inline-block;margin-left:5px;padding:2px 5px;border-radius:5px;background:#eadfce;font-size:9px;vertical-align:2px}
+</style>
+</head>
+<body><main class="wrap">
+<div class="head">
+ <div class="title">⚔ 길드전 임무표 <span class="beta">BETA</span></div>
+ <div class="sub">두더지도굴단 테스트 페이지 · 기존 도감과 분리 운영</div>
+ <section class="summary">
+  <div class="stat"><b id="total">0</b><span>확인 꽃</span></div>
+  <div class="stat"><b id="high">0</b><span>고득점</span></div>
+  <div class="stat"><b id="del">0</b><span>삭제 추천</span></div>
+ </section>
+ <div class="filters" id="filters">
+  <button class="filter on" data-f="all">전체</button><button class="filter" data-f="high">고득점</button><button class="filter" data-f="keep">유지</button><button class="filter" data-f="delete">삭제</button><button class="filter" data-f="zero">미보유</button><button class="filter" data-f="one">1명 보유</button>
+ </div>
+</div>
+<div class="sortrow"><span>보유 명수를 누르면 보유자가 펼쳐집니다.</span><select id="sort"><option value="score">점수 높은순</option><option value="holders">보유 적은순</option><option value="name">가나다순</option></select></div>
+<section class="table" id="table"></section>
+<p class="note">판정 규칙(테스트): 10점 이하는 자동으로 ‘삭제’. 23점 이상은 ‘고득점’으로 임시 강조하며, 점수 표본이 쌓이면 고득점 기준은 조정합니다. 미보유 꽃은 점수와 별개로 수행 불가 상태를 함께 표시할 예정입니다.</p>
+</main>
+<script>
+// 길전 캡처 실측 데이터. holderNames는 기존 도감 데이터 연결 전 테스트용입니다.
+const DATA=[
+ {name:'취한뺨 해당화',score:14,harvest:280,holderNames:[]},
+ {name:'자홍색 협죽도',score:14,harvest:280,holderNames:[]},
+ {name:'목욕 아네모네',score:23,harvest:null,holderNames:[]},
+ {name:'달빛 아네모네',score:21,harvest:null,holderNames:[]}
+];
+const HIGH_SCORE=23, DELETE_MAX=10;
+let filter='all';
+function status(x){if(x.score<=DELETE_MAX)return 'delete';if(x.score>=HIGH_SCORE)return 'high';return 'keep'}
+function label(s){return s==='delete'?'삭제':s==='high'?'고득점':'유지'}
+function cls(s){return s==='delete'?'delete':s==='high'?'highTag':'keep'}
+function render(){
+ let rows=[...DATA];
+ const sort=document.querySelector('#sort').value;
+ rows.sort(sort==='score'?(a,b)=>b.score-a.score||a.name.localeCompare(b.name,'ko'):sort==='holders'?(a,b)=>a.holderNames.length-b.holderNames.length||b.score-a.score:(a,b)=>a.name.localeCompare(b.name,'ko'));
+ rows=rows.filter(x=>filter==='all'||(filter==='high'&&status(x)==='high')||(filter==='keep'&&status(x)==='keep')||(filter==='delete'&&status(x)==='delete')||(filter==='zero'&&x.holderNames.length===0)||(filter==='one'&&x.holderNames.length===1));
+ const t=document.querySelector('#table');
+ t.innerHTML='<div class="tr th"><div>꽃</div><div style="text-align:center">점수</div><div style="text-align:center">보유</div><div style="text-align:center">판단</div></div>'+(rows.length?rows.map((x,i)=>{const s=status(x),n=x.holderNames.length;return `<div class="tr" data-i="${DATA.indexOf(x)}"><div class="name">${x.name}</div><div class="score ${s==='high'?'high':''}">${x.score}</div><button class="holders ${n===0?'zero':''}" data-holder>${n}명</button><div class="judge ${cls(s)}">${label(s)}</div><div class="detail">${n?'<b>보유자</b> · '+x.holderNames.join(' · '):'<b>보유자 없음</b>'}${x.harvest?`<br>실측 임무 · ${x.harvest}송이 수확`:''}</div></div>`}).join(''):'<div class="empty">해당 조건의 꽃이 없습니다.</div>');
+ document.querySelectorAll('[data-holder]').forEach(b=>b.onclick=()=>b.closest('.tr').classList.toggle('open'));
+ document.querySelector('#total').textContent=DATA.length;document.querySelector('#high').textContent=DATA.filter(x=>status(x)==='high').length;document.querySelector('#del').textContent=DATA.filter(x=>status(x)==='delete').length;
+}
+document.querySelector('#filters').onclick=e=>{const b=e.target.closest('[data-f]');if(!b)return;filter=b.dataset.f;document.querySelectorAll('.filter').forEach(x=>x.classList.toggle('on',x===b));render()};
+document.querySelector('#sort').onchange=render;render();
+</script></body></html>
