@@ -1,0 +1,46 @@
+name: Add guild beta entry safely
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/add-guild-beta-safe.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add static beta entry to rendered HTML
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+          marker='dooduz-guild-beta-entry'
+          if marker in s:
+              print('already present')
+          else:
+              anchor="    document.open();document.write(s);document.close();"
+              assert anchor in s
+              line="    s=s.replace('<div class=\"tools\">','<a id=\"dooduz-guild-beta-entry\" href=\"./guild-test.html\" style=\"display:flex;align-items:center;gap:7px;margin:8px 0 10px;padding:11px 13px;border:1px solid #e3d6c7;border-radius:12px;background:#fffdf9;color:#4a2b1d;text-decoration:none;font-size:13px\"><strong>⚔ 길드전 임무표</strong><span style=\"font-size:10px;font-weight:800;padding:3px 6px;border-radius:999px;background:#efe4d5;color:#7a5946\">BETA</span><span style=\"margin-left:auto;color:#9a8171;font-size:16px\">›</span></a><div class=\"tools\">');\n"
+              s=s.replace(anchor,line+anchor)
+              p.write_text(s,encoding='utf-8')
+          PY
+          python - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          start=s.find('<body><script>')+len('<body><script>')
+          end=s.rfind('</script></body></html>')
+          Path('/tmp/index-loader.js').write_text(s[start:end],encoding='utf-8')
+          PY
+          node --check /tmp/index-loader.js
+          git diff --check
+      - name: Commit
+        run: |
+          if git diff --quiet -- index.html; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git commit -m '웹도감 홈 길드전 BETA 버튼 안전 연결'
+          git push
