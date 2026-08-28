@@ -1,0 +1,45 @@
+name: Fix guild catalog validation
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-guild-catalog-validation.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch guild mission catalog rules
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          # 1) Correct confirmed OCR/name mismatches in late capture data.
+          p=Path('guild-auto-late-20260828.js')
+          s=p.read_text()
+          s=s.replace('"축영 해당화"','"촉영 해당화"')
+          s=s.replace('"진홍빛 남매"','"진홍빛 납매"')
+          p.write_text(s)
+
+          # 2) Mission table: captured rows must exist in the authoritative catalog sheet.
+          #    Auto-added unowned rows are limited to UR/SSR only.
+          p=Path('guild-test-v2.html')
+          s=p.read_text()
+          s=s.replace('let bm=new Map(BASE.map(x=>[x.name,x]));','let bm=new Map(BASE.filter(x=>gm.has(n(x.name))).map(x=>[n(x.name),x]));')
+          # Add grade restriction to the unowned auto-add loop, whatever its current compact form is.
+          s=re.sub(r"for\(let\[nm,g\]of gm\)if\(\(m\.get\(nm\)\|\|\[\]\)\.length===0\)\{",
+                   "for(let[nm,g]of gm)if((g==='UR'||g==='SSR')&&(m.get(nm)||[]).length===0){",s,count=1)
+          # Fallback for an alternate compact condition if workflow had removed parentheses.
+          s=re.sub(r"for\(let\[nm,g\]of gm\)if\(!\(m\.get\(nm\)\|\|\[\]\)\.length\)\{",
+                   "for(let[nm,g]of gm)if((g==='UR'||g==='SSR')&&!(m.get(nm)||[]).length){",s,count=1)
+          p.write_text(s)
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add guild-auto-late-20260828.js guild-test-v2.html
+          git commit -m '길전 꽃명 원본시트 검증 및 미보유 SSR이상만 추가' || exit 0
+          git push
