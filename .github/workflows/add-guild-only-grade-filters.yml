@@ -1,0 +1,48 @@
+name: Add guild only and grade filters
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/add-guild-only-grade-filters.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch filters
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html'); s=p.read_text()
+          # Add ONLY as a judgment/ownership filter and grade filter row.
+          old='<button data-f="keep">유지</button><button class="on" data-f="delete">삭제</button></nav>'
+          new='<button data-f="keep">유지</button><button data-f="only">ONLY</button><button class="on" data-f="delete">삭제</button></nav><div id="gradeNav" class="grade-nav"><span>등급</span><button class="on" data-g="all">전체</button><button data-g="UR">UR</button><button data-g="SSR">SSR</button><button data-g="SR">SR</button><button data-g="R">R</button><button data-g="N">N</button></div>'
+          if old not in s: raise SystemExit('nav anchor missing')
+          s=s.replace(old,new,1)
+          # State.
+          s=s.replace("f='delete',q=''","f='delete',gfilter='all',q=''",1)
+          # Filtering: ONLY means exactly one holder; grade is independent and combines with current filter.
+          oldf="a=a.filter(x=>(f==='all'||f===st(x))&&(!q||x.name.includes(q)));"
+          newf="a=a.filter(x=>(f==='all'||(f==='only'?x.h.length===1:f===st(x)))&&(gfilter==='all'||x.grade===gfilter)&&(!q||x.name.includes(q)));"
+          if oldf not in s: raise SystemExit('filter anchor missing')
+          s=s.replace(oldf,newf,1)
+          # Keep grade on all base/merged records.
+          s=s.replace("if(!bm.has(nm))bm.set(nm,{name:nm,thumb:img,known:false});else if(!bm.get(nm).thumb)bm.get(nm).thumb=img","if(!bm.has(nm))bm.set(nm,{name:nm,thumb:img,known:false,grade:g});else{bm.get(nm).grade=g;if(!bm.get(nm).thumb)bm.get(nm).thumb=img}",1)
+          # Grade click handler.
+          anchor="sort.onchange=render;flowerSearch.oninput"
+          repl="gradeNav.onclick=e=>{let b=e.target.closest('button');if(!b)return;gfilter=b.dataset.g;gradeNav.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));render()};sort.onchange=render;flowerSearch.oninput"
+          s=s.replace(anchor,repl,1)
+          # Styling. ONLY distinct purple; grade row compact and horizontal.
+          css='''<style id="guild-extra-filters">nav button[data-f="only"]{background:#f0e9f8;color:#725090;font-weight:800}nav button[data-f="only"].on{background:#725090;color:#fff}.grade-nav{display:flex;align-items:center;gap:5px;overflow-x:auto;margin:0 -14px;padding:7px 14px 8px;background:#f7f1e7;border-bottom:1px solid #e7ddd2;white-space:nowrap}.grade-nav>span{font-size:10px;color:#8c7b70;margin-right:2px}.grade-nav button{padding:5px 9px;font-size:10px}.grade-nav button.on{background:#4a2b1d;color:#fff}.grade-nav button[data-g="UR"]{border-color:#efb4cb}.grade-nav button[data-g="SSR"]{border-color:#e4c55e}.grade-nav button[data-g="SR"]{border-color:#c9afe7}.grade-nav button[data-g="R"]{border-color:#9ccde5}.grade-nav button[data-g="N"]{border-color:#abd3a6}</style>'''
+          s=s.replace('</head>',css+'</head>',1)
+          p.write_text(s)
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add guild-test-v2.html
+          git commit -m '길전 ONLY 및 꽃 등급 필터 추가' || exit 0
+          git push
