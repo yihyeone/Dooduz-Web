@@ -1,0 +1,105 @@
+name: Audit and sync guild missions 20260828
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/audit-sync-guild-20260828.yml']
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit catalog map and patch guild page/data
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json, difflib
+
+          # 1) Load the real catalog image map as canonical name source.
+          js=Path('guild-catalog-images.js').read_text(errors='ignore')
+          # Extract quoted object keys safely enough for the generated map.
+          keys=set(re.findall(r'''["']([^"']+)["']\s*:''', js))
+          # Fall back to flower names embedded in app.html when necessary.
+          app=Path('app.html').read_text(errors='ignore')
+          if len(keys)<100:
+              keys.update(re.findall(r'''name\s*:\s*["']([^"']+)["']''', app))
+              keys.update(re.findall(r'''["']([^"']+)["']\s*:\s*["']data:image/''', app))
+          print('canonical catalog names:',len(keys))
+
+          # New B-rank flower-harvest observations from IMG_1513~1554.
+          raw=[
+            ('은하수에 실은 꿈',25,'IMG_1513.PNG'),('연홍색 접시꽃',21,'IMG_1514.PNG'),
+            ('안개 자색 아프리칸바이올렛',14,'IMG_1515.PNG'),('귀염냥 연회',25,'IMG_1516.PNG'),
+            ('분홍 수정 루위시아',21,'IMG_1517.PNG'),('연분홍 조팝나무',21,'IMG_1518.PNG'),
+            ('복숭아빛 노루오줌',14,'IMG_1519.PNG'),('금서리 붓꽃',21,'IMG_1520.PNG'),
+            ('반쯤 핀 칼랑코에',14,'IMG_1521.PNG'),('분홍솜털 안개꽃',14,'IMG_1522.PNG'),
+            ('연홍색 접시꽃',21,'IMG_1526.PNG'),('분홍솜털 안개꽃',14,'IMG_1527.PNG'),
+            ('안개 자색 아프리칸바이올렛',14,'IMG_1528.PNG'),('단풍 온시디움',23,'IMG_1529.PNG'),
+            ('석산',14,'IMG_1530.PNG'),('금살구 온시디움',14,'IMG_1531.PNG'),
+            ('분홍 수정 루위시아',21,'IMG_1532.PNG'),('연지빛 개양귀비',23,'IMG_1533.PNG'),
+            ('보라심장 물상추',14,'IMG_1534.PNG'),('자홍색 협죽도',14,'IMG_1535.PNG'),
+            ('연분홍 조팝나무',21,'IMG_1536.PNG'),('복숭아빛 노루오줌',14,'IMG_1537.PNG'),
+            ('측영 해당화',14,'IMG_1538.PNG'),('연분홍 협죽도',14,'IMG_1539.PNG'),
+            ('금살구 페튜니아',14,'IMG_1540.PNG'),('금서리 붓꽃',21,'IMG_1541.PNG'),
+            ('진홍빛 남매',25,'IMG_1542.PNG'),('야자수 그늘',14,'IMG_1543.PNG'),
+            ('반쯤 핀 칼랑코에',14,'IMG_1544.PNG'),('따스한 여름 햇살',23,'IMG_1545.PNG'),
+            ('윤분홍 칼랑코에',23,'IMG_1546.PNG'),('흑수정 달리아',21,'IMG_1548.PNG'),
+            ('복숭아빛 델피니움',14,'IMG_1549.PNG'),('금살구 페튜니아',14,'IMG_1550.PNG'),
+            ('금서리 붓꽃',21,'IMG_1551.PNG'),('진홍빛 남매',25,'IMG_1552.PNG'),
+            ('꽃나무 정원',30,'IMG_1553.PNG'),('분홍 스파티필룸',23,'IMG_1554.PNG')]
+
+          def canon(name):
+              if name in keys or not keys: return name
+              # Normalize spaces for exact match first.
+              norm=lambda x:re.sub(r'\s+','',x)
+              n=norm(name)
+              exact=[k for k in keys if norm(k)==n]
+              if exact:return exact[0]
+              m=difflib.get_close_matches(name,list(keys),n=1,cutoff=.72)
+              if m:
+                  print('canonicalized:',name,'=>',m[0]); return m[0]
+              print('WARNING catalog name not matched:',name); return name
+
+          rows=[]; seen=set()
+          for name,score,src in raw:
+              name=canon(name)
+              sig=(name,score)
+              if sig in seen: continue
+              seen.add(sig); rows.append((name,score,src))
+
+          # Append new observation file; catalog image fallback is always used by canonical name.
+          payload='(()=>{const I=window.GUILD_CATALOG_IMAGES||{};window.GUILD_DATA=(window.GUILD_DATA||[]).concat(['
+          payload+=','.join("{name:%s,score:%d,rank:'B',thumb:I[%s]||'',source:%s}"%(json.dumps(n,ensure_ascii=False),sc,json.dumps(n,ensure_ascii=False),json.dumps(src)) for n,sc,src in rows)
+          payload+=']);})();\n'
+          Path('guild-auto-late-20260828.js').write_text(payload)
+
+          p=Path('guild-test-v2.html'); s=p.read_text()
+          if 'guild-auto-late-20260828.js' not in s:
+              s=s.replace('<script src="guild-auto-20260828.js"></script>','<script src="guild-auto-20260828.js"></script><script src="guild-auto-late-20260828.js?v=20260828-2217"></script>')
+
+          # 2) Main catalog additions: screenshot-confirmed missions always remain; only add
+          #    extra catalog rows when nobody owns the flower. Also assign grade/image to all BASE rows.
+          old="for(let[nm,g]of gm)if(g==='SSR'||g==='UR'){let img=(window.GUILD_CATALOG_IMAGES&&window.GUILD_CATALOG_IMAGES[nm])||'';if(!bm.has(nm))bm.set(nm,{name:nm,thumb:img,known:false,grade:g});else{bm.get(nm).grade=g;if(!bm.get(nm).thumb)bm.get(nm).thumb=img}}"
+          new="for(let[nm,g]of gm){let img=(window.GUILD_CATALOG_IMAGES&&window.GUILD_CATALOG_IMAGES[nm])||'',holders=m.get(nm)||[];if(bm.has(nm)){bm.get(nm).grade=g;if(!bm.get(nm).thumb)bm.get(nm).thumb=img}else if(holders.length===0){bm.set(nm,{name:nm,thumb:img,known:false,grade:g})}}"
+          if old in s:s=s.replace(old,new,1)
+          else: print('merge anchor not found; inspect manually')
+
+          # 3) Render fallback: never trust one thumbnail source. Use main catalog by canonical flower name.
+          oldimg='${x.thumb?`<img src="${x.thumb}">`:''}'
+          newimg='${(x.thumb||((window.GUILD_CATALOG_IMAGES||{})[x.name]))?`<img src="${x.thumb||((window.GUILD_CATALOG_IMAGES||{})[x.name])}" onerror="const f=(window.GUILD_CATALOG_IMAGES||{})[${repr(x.name)}];if(f&&this.src!==f){this.src=f}else{this.style.display=\'none\'}">`:''}'
+          # Avoid JS interpolation issue by use data-name handler instead, inserted via simple stable replacement.
+          if oldimg in s:
+              s=s.replace(oldimg,'${(x.thumb||((window.GUILD_CATALOG_IMAGES||{})[x.name]))?`<img data-flower="${x.name.replace(/&/g,\'&amp;\').replace(/"/g,\'&quot;\')}" src="${x.thumb||((window.GUILD_CATALOG_IMAGES||{})[x.name])}">`:\'\'}',1)
+              s=s.replace("document.querySelectorAll('.hold').forEach", "document.querySelectorAll('.flower img').forEach(im=>im.addEventListener('error',()=>{let f=(window.GUILD_CATALOG_IMAGES||{})[im.dataset.flower];if(f&&im.src!==f)im.src=f;else im.style.display='none'}));document.querySelectorAll('.hold').forEach",1)
+
+          p.write_text(s)
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add guild-test-v2.html guild-auto-late-20260828.js
+          git commit -m '길전 데이터 메인도감 기준 정합성 점검 및 신규 캡처 반영' || exit 0
+          git push
