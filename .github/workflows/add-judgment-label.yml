@@ -1,0 +1,29 @@
+name: Add judgment filter label
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/add-judgment-label.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html'); s=p.read_text()
+          s=s.replace('<nav id="nav"><button data-f="all">','<nav id="nav"><span class="filter-label">판단</span><button data-f="all">',1)
+          s=s.replace('</head>','<style id="judgment-label">nav#nav{align-items:center}.filter-label{flex:0 0 auto;font-size:10px;color:#8c7b70;margin-right:2px}</style></head>',1)
+          p.write_text(s)
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add guild-test-v2.html
+          git commit -m '길전 판단 필터 라벨 추가' || exit 0
+          git push
