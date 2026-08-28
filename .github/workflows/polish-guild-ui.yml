@@ -1,0 +1,45 @@
+name: Polish guild mission UI
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/polish-guild-ui.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add cohesive UI overrides
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html'); s=p.read_text()
+          css='''<style id="guild-ui-polish">
+          :root{--brown:#4a2b1d;--paper:#f7f1e7;--line:#e7ddd2}
+          body{background:var(--paper)} main{padding:0 14px 105px!important}
+          header{padding:0 0 8px!important}
+          .titlebar{position:sticky!important;top:0!important;z-index:80!important;margin:0 -14px 12px!important;padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px!important;min-height:54px;background:var(--brown)!important;color:#fff!important;box-shadow:0 2px 8px rgba(60,35,20,.16)}
+          .titlebar h1,.titlebar h1 small{color:#fff!important}.titlebar h1{font-size:18px!important;letter-spacing:-.02em}.titlebar h1 small{opacity:.7;font-size:10px!important}
+          .homebtn{width:34px!important;height:34px!important;flex:0 0 34px;border:1px solid rgba(255,255,255,.25)!important;background:rgba(255,255,255,.12)!important;color:#fff!important;border-radius:10px!important;font-size:22px!important}
+          #sync{display:block;margin:0 2px 8px;font-size:11px}
+          .sum{gap:8px!important;margin:0 0 10px!important}.sum div{padding:10px 8px!important;border-radius:12px!important}.sum b{font-size:18px!important;margin-bottom:2px}
+          .guild-search{margin:0 0 10px!important;height:44px!important;border-radius:12px!important;padding:0 12px!important}
+          nav{position:sticky!important;top:54px!important;z-index:70!important;margin:0 -14px!important;padding:8px 14px!important;gap:6px!important;background:var(--paper)!important;border-bottom:1px solid var(--line)}
+          nav button{padding:6px 11px!important;font-size:11px!important}
+          .bar{margin:9px 0 7px!important;min-height:32px;align-items:center!important}.bar span{line-height:1.35}.bar select{height:32px;padding:0 8px!important;border-radius:9px!important;font-size:11px}
+          .table{overflow:visible!important;border-radius:12px!important}.row{gap:4px!important;padding:0 9px!important}.head{position:sticky!important;top:103px!important;z-index:60!important;box-shadow:0 1px 0 var(--line)}
+          .detail{padding:10px 12px!important;line-height:1.5}
+          .note{padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px))!important}
+          </style>'''
+          s=s.replace('</head>',css+'</head>',1)
+          p.write_text(s)
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add guild-test-v2.html
+          git commit -m '길전 상단바 도감 스타일 통일 및 UI 여백 정돈' || exit 0
+          git push
