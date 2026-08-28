@@ -1,0 +1,34 @@
+name: Restore all-grade missing flowers
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/restore-all-grade-missing-flowers.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore all-grade zero-holder catalog rows
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html')
+          s=p.read_text()
+          old="if(!hs.length&&(g==='SSR'||g==='UR')){"
+          new="if(!hs.length){"
+          if old in s:
+              s=s.replace(old,new,1)
+          else:
+              print('target already restored or pattern changed')
+          p.write_text(s)
+          PY
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add guild-test-v2.html
+          git commit -m '미보유 꽃 전체 등급 길전 임무표 복구' || exit 0
+          git push
