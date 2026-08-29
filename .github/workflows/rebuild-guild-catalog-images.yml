@@ -1,0 +1,50 @@
+name: Rebuild guild images from main catalog
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/rebuild-guild-catalog-images.yml']
+permissions:
+  contents: write
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract main catalog image map
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json
+          app=Path('app.html').read_text(encoding='utf-8')
+          # Extract every quoted object key whose value is an embedded image.
+          # This deliberately does not depend on the JS variable name used by app.html.
+          pairs=re.findall(r'''["']([^"'\\]{1,120})["']\s*:\s*["'](data:image/(?:png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+)["']''', app)
+          images={k:v for k,v in pairs}
+          if len(images) < 100:
+              raise SystemExit(f'Image extraction looks wrong: only {len(images)} entries')
+          if '동화의 성' not in images:
+              raise SystemExit('Main catalog contains no extracted image for 동화의 성')
+          out='window.GUILD_CATALOG_IMAGES='+json.dumps(images,ensure_ascii=False,separators=(',',':'))+';\n'
+          Path('guild-catalog-images.js').write_text(out,encoding='utf-8')
+          print('catalog images:',len(images),'동화의 성:',len(images['동화의 성']))
+          PY
+      - name: Add cache busting and safe fallback
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html'); s=p.read_text(encoding='utf-8')
+          s=s.replace('src="guild-catalog-images.js"','src="guild-catalog-images.js?v=20260829-1045"')
+          # Existing mission thumbnail can fail; retry the canonical catalog image by flower name.
+          old='`<img src="${x.thumb}" onerror="this.onerror=null;let u=(window.GUILD_CATALOG_IMAGES||{})[this.closest(\'.row\').querySelector(\'.name\')?.textContent.trim()];if(u&&this.src!==u)this.src=u;else this.remove()">`'
+          # Do not depend on prior onerror implementation; replace the simple known template too.
+          s=s.replace('`<img src="${x.thumb}">`','`<img src="${x.thumb}" data-flower="${x.name}" onerror="const u=(window.GUILD_CATALOG_IMAGES||{})[this.dataset.flower];if(u&&this.src!==u){this.onerror=null;this.src=u}else this.remove()">`')
+          p.write_text(s,encoding='utf-8')
+          PY
+          git diff --check
+      - name: Commit rebuilt map
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add guild-catalog-images.js guild-test-v2.html
+          git commit -m '길전 이미지를 메인 도감 이미지맵에서 재생성' || exit 0
+          git push
