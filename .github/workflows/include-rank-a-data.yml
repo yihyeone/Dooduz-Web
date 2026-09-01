@@ -1,0 +1,27 @@
+name: Include A rank mission data
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/include-rank-a-data.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('guild-test-v2.html'); s=p.read_text()
+          anchor='<script src="guild-auto-late-20260828.js?v=20260828-2217"></script>'
+          add=anchor+'<script src="guild-rank-a-20260901.js?v=20260901-0950"></script>'
+          if 'guild-rank-a-20260901.js' not in s:
+            s=s.replace(anchor,add,1)
+          p.write_text(s)
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add guild-test-v2.html
+          git commit -m 'A랭 길전 데이터 페이지 연결' || exit 0
+          git push
