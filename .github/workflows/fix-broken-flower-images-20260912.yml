@@ -1,0 +1,140 @@
+name: Fix broken flower image mappings 2026-09-12
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-broken-flower-images-20260912.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repair late flower image mappings
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re, json, base64, hashlib
+
+          mappings = {
+            '쌍둥이자리·성수쌍영':'./images/flower-assets/e8b48e90048478e5f5e0.webp',
+            '피어나는 동심':'./images/flower-assets/cd6b5dc9c0acfaeba25c.webp',
+            '구름빛 사절':'./images/flower-assets/ba4af1ad94ff317a60f0.webp',
+            '서리구름마':'./images/flower-assets/86f4109a1cf636a6ea08.webp',
+            '화려한 서커스':'./images/flower-assets/ed7f33da2ed21e441672.webp',
+            '별의 시간의 사도':'./images/flower-assets/20f9eae1457c3624f13a.webp',
+            '곰 돛 구름배':'./images/flower-assets/c3746494684d6a00957a.webp',
+            '곰 듯 구름배':'./images/flower-assets/c3746494684d6a00957a.webp',
+            '분홍빛 생일잔치':'./images/flower-assets/46cc343d8ccc026f4e68.webp',
+            '핏빛 달의 피안화':'./images/flower-assets/1ad5f47a3081df9a2b6f.webp',
+            '고택 성자':'./images/flower-assets/1a93fdbe57bac72f1141.webp',
+            '불꽃 솜털 국화':'./images/aug21/03.webp?v=20260821a',
+            '명월유합':'./images/flower-assets/c945d85e147fa01327c9.webp',
+            '보랏빛 밤의 성단':'./images/flower-assets/6931cdee2ea007899046.webp',
+            '몬스테라':'./images/flower-assets/8905acffd58051e4da6f.webp',
+            '앵구다정':'./images/flower-assets/2b88004252937a9f1886.webp',
+            '분홍 방울':'./images/flower-assets/1d71ff81c2d9aa79f6fa.webp',
+            '진홍빛 백일초':'./images/flower-assets/af1ca0fbc41b00c872df.webp',
+            '금잔화 궁등':'./images/flower-assets/b3e6505ebab2912fb4a3.webp',
+            '썬글로우 히페리쿰':'./images/flower-assets/f3153e27482667415961.webp',
+            '무지개빛 구름 바퀴':'./images/flower-assets/ef9cb9c65c8de6eb0220.webp',
+            '무지개빛 구름바퀴':'./images/flower-assets/ef9cb9c65c8de6eb0220.webp'
+          }
+
+          # Externalize the one remaining embedded Sep-12 image.
+          extra_path = Path('images/sep12-extra-06.js')
+          extra = extra_path.read_text(encoding='utf-8')
+          data_match = re.search(r'("별 연꽃 시간 고리"\s*:\s*")data:image/(?:webp|png|jpeg|jpg);base64,([A-Za-z0-9+/=]+)(")', extra)
+          if data_match:
+              raw = base64.b64decode(data_match.group(2))
+              ext = 'webp' if raw[:4] == b'RIFF' else 'png'
+              name = hashlib.sha256(raw).hexdigest()[:20] + '.' + ext
+              asset = Path('images/flower-assets') / name
+              asset.write_bytes(raw)
+              rel = './images/flower-assets/' + name
+              extra = extra[:data_match.start()] + data_match.group(1) + rel + data_match.group(3) + extra[data_match.end():]
+              extra_path.write_text(extra, encoding='utf-8')
+              mappings['별 연꽃 시간 고리'] = rel
+          else:
+              path_match = re.search(r'"별 연꽃 시간 고리"\s*:\s*"([^\"]+)"', extra)
+              if not path_match:
+                  raise SystemExit('별 연꽃 시간 고리 image source not found')
+              mappings['별 연꽃 시간 고리'] = path_match.group(1)
+
+          # Correct the authoritative flower name typo in supplemental data.
+          fup = Path('flower-update.js')
+          ftxt = fup.read_text(encoding='utf-8').replace('명월유향','명월유합')
+          fup.write_text(ftxt, encoding='utf-8')
+
+          def patch_json_object(path, pattern, prefix, suffix):
+              p = Path(path)
+              s = p.read_text(encoding='utf-8')
+              m = re.search(pattern, s, re.S)
+              if not m:
+                  raise SystemExit(f'object not found in {path}')
+              obj = json.loads(m.group(1))
+              obj.update(mappings)
+              encoded = json.dumps(obj, ensure_ascii=False, separators=(',',':'))
+              s = s[:m.start()] + prefix + encoded + suffix + s[m.end():]
+              p.write_text(s, encoding='utf-8')
+
+          patch_json_object(
+              'app.html',
+              r'const IMAGES=(\{.*?\});\s*const IMG=',
+              'const IMAGES=',
+              ';\nconst IMG='
+          )
+          patch_json_object(
+              'guild-catalog-images.js',
+              r'window\.GUILD_CATALOG_IMAGES=(\{.*\});\s*$',
+              'window.GUILD_CATALOG_IMAGES=',
+              ';\n'
+          )
+
+          # index.html patches app.html at runtime. Keep a compact explicit override there too.
+          ip = Path('index.html')
+          s = ip.read_text(encoding='utf-8')
+          start = '// BROKEN_IMAGE_FIX_20260912_START'
+          end = '// BROKEN_IMAGE_FIX_20260912_END'
+          s = re.sub(re.escape(start)+r'.*?'+re.escape(end)+r'\n?', '', s, flags=re.S)
+          marker = 'const imageAliases='
+          if marker not in s:
+              raise SystemExit('index marker missing')
+          block = start+'\nObject.assign(missingImages,'+json.dumps(mappings, ensure_ascii=False, separators=(',',':'))+');\n'+end+'\n'
+          s = s.replace(marker, block+marker, 1)
+          ip.write_text(s, encoding='utf-8')
+
+          # Ensure every local mapping target exists (strip cache query strings).
+          missing=[]
+          for flower, ref in mappings.items():
+              if ref.startswith('./'):
+                  local=Path(ref[2:].split('?',1)[0])
+                  if not local.exists(): missing.append((flower,str(local)))
+          if missing:
+              raise SystemExit('missing image files: '+repr(missing))
+
+          # No embedded image should remain in the core runtime maps.
+          for file in ['app.html','index.html','guild-catalog-images.js','images/sep12-extra-06.js']:
+              if 'data:image/' in Path(file).read_text(encoding='utf-8'):
+                  raise SystemExit('embedded image remains in '+file)
+          print('repaired mappings:', len(mappings))
+          PY
+      - name: Validate JavaScript and diff
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          a=s.find('<script>'); b=s.rfind('</script>')
+          if a < 0 or b <= a: raise SystemExit('index script markers missing')
+          Path('/tmp/index-outer.js').write_text(s[a+8:b],encoding='utf-8')
+          PY
+          node --check /tmp/index-outer.js
+          git diff --check
+      - name: Commit repaired mappings
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app.html index.html guild-catalog-images.js flower-update.js images/sep12-extra-06.js images/flower-assets
+          git commit -m '엑박 꽃 이미지 매핑 일괄 복구' || exit 0
+          git push
