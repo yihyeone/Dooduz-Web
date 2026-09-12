@@ -3,6 +3,37 @@ window.SUPPLEMENTAL_FLOWERS=["비단 꽃부채","성란화의 언약","우주 �
 window.SUPPLEMENTAL_FLOWER_GRADES=Object.assign(window.SUPPLEMENTAL_FLOWER_GRADES||{},{"쌍둥이자리·성수쌍영":"UR","피어나는 동심":"UR","구름빛 사절":"UR","서리구름마":"UR","화려한 서커스":"UR","별의 시간의 사도":"UR","곰 돛 구름배":"SSR","분홍빛 생일잔치":"SSR","핏빛 달의 피안화":"SSR","별 연꽃 시간 고리":"SSR","고택 성자":"SR","불꽃 솜털 국화":"SR","명월유향":"SR","보랏빛 밤의 성단":"SR","몬스테라":"R","앵구다정":"R","분홍 방울":"R","진홍빛 백일초":"R","금잔화 궁등":"R","썬글로우 히페리쿰":"N"});
 Object.assign(window.NEW_FLOWER_IMAGES=window.NEW_FLOWER_IMAGES||{},{"블루스타 남매":"./images/aug19/01.webp?v=20260819","블루스타 납매":"./images/aug19/01.webp?v=20260819c","가을빛 단풍":"./images/aug19/02.webp?v=20260819","파스텔 꿈의 조개":"./images/aug19/03.webp?v=20260819","바다색 꿈의 조개":"./images/aug19/04.webp?v=20260819","불꽃심장 꿈조개":"./images/aug19/05.webp?v=20260819b","연분홍 환상 벚꽃":"./images/aug19/06.webp?v=20260819","연보라 환상 벚꽃":"./images/aug19/07.webp?v=20260819","성란화의 언약":"./images/aug19/08.webp?v=20260819","꽃케이크 바구니":"./images/aug19/09.webp?v=20260819"});
 
+// 2026-09-12: 이미 등록된 꽃 중 누락된 도감 이미지 15종 보완
+(function loadSep12MissingFlowerImages(){
+  const files=[
+    './images/sep12-images-1.js?v=20260912',
+    './images/sep12-images-2.js?v=20260912',
+    './images/sep12-extra-01.js?v=20260912',
+    './images/sep12-extra-02.js?v=20260912',
+    './images/sep12-extra-03.js?v=20260912',
+    './images/sep12-extra-04.js?v=20260912',
+    './images/sep12-extra-05.js?v=20260912',
+    './images/sep12-extra-06.js?v=20260912',
+    './images/sep12-extra-07.js?v=20260912',
+    './images/sep12-extra-08.js?v=20260912',
+    './images/sep12-extra-09.js?v=20260912',
+    './images/sep12-extra-10.js?v=20260912',
+    './images/sep12-extra-11.js?v=20260912'
+  ];
+  for(const src of files){
+    try{
+      const x=new XMLHttpRequest();
+      x.open('GET',src,false);
+      x.send(null);
+      if((x.status>=200&&x.status<300)||x.status===0){
+        (0,eval)(x.responseText);
+      }
+    }catch(e){
+      console.warn('flower image supplement load failed',src,e);
+    }
+  }
+})();
+
 // 길드전 임무표 BETA 진입 버튼: 길드 도감 완성도/내 꽃 수정 영역 바로 아래에 삽입
 (function addGuildBattleBetaEntry(){
   function mount(){
