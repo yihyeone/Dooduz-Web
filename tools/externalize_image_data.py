@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 ASSET_DIR = ROOT / "images" / "flower-assets"
 ASSET_DIR.mkdir(parents=True, exist_ok=True)
 
+# Refactor is intentionally isolated on a non-production branch.
 # legacy.html is intentionally kept untouched as a rollback snapshot.
 TARGETS = [
     ROOT / "app.html",
@@ -34,11 +35,8 @@ for path in TARGETS:
         continue
     text = path.read_text(encoding="utf-8")
     before = len(text)
-    replaced = 0
 
     def repl(m: re.Match[str]) -> str:
-        nonlocal_replaced = None
-        del nonlocal_replaced
         raw = base64.b64decode(m.group("b64"), validate=True)
         digest = hashlib.sha256(raw).hexdigest()[:20]
         ext = EXT[m.group("mime")]
@@ -50,7 +48,6 @@ for path in TARGETS:
         q = m.group("q")
         return f"{q}{rel}{q}"
 
-    # count separately because re.sub callback has no convenient nonlocal counter at module scope
     matches = list(DATA_RE.finditer(text))
     replaced = len(matches)
     if replaced:
