@@ -1,0 +1,104 @@
+name: Fix card size and broken flower images 2026-09-13
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-card-size-broken-flowers-20260913.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install image tools
+        run: pip install pillow gdown
+      - name: Rebuild cards at standard size and repair mappings
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import gdown, re, json
+
+          Path('images/flower-assets').mkdir(parents=True, exist_ok=True)
+
+          sources={
+            'img1825':('137nMl53Jyke6XIL_iiuFWGcbXw3mnUul','/tmp/IMG_1825.PNG'),
+            'img1826':('16CEZQKkQmU7wf5YWL7l4Rfyj-iqo2L8r','/tmp/IMG_1826.PNG'),
+            'img1824':('1uf6sZScusCcVXzrcQc80ySYFegSlmZmh','/tmp/IMG_1824.PNG'),
+            'img1823':('1dY8o2IfrEO9cY8uKFh2truObVfYUbYN7','/tmp/IMG_1823.PNG'),
+          }
+          for key,(fid,out) in sources.items():
+              print('download',key)
+              r=gdown.download(id=fid, output=out, quiet=False)
+              if not r or not Path(out).exists(): raise SystemExit('Drive download failed: '+key)
+
+          def card(src, box, dest):
+              im=Image.open(src).convert('RGB').crop(box)
+              im=im.resize((424,574),Image.Resampling.LANCZOS)
+              out=Path('images/flower-assets')/dest
+              im.save(out,'WEBP',quality=88,method=6)
+              if Image.open(out).size != (424,574): raise SystemExit('bad size '+str(out))
+              return './'+str(out)
+
+          mappings={
+            # 시트의 정확한 이름을 기존 정상 이미지에 연결
+            '구름 조류 꽃무늬 배':'./images/flower-assets/70d41db5c8d76d5675ce.webp',
+            # 최근 업데이트 이미지는 기존 카드 규격 424x574로 재생성
+            '무지개빛 구름 바퀴':card('/tmp/IMG_1824.PNG',(765,560,1115,1025),'card-rainbow-cloud-wheel-20260913.webp'),
+            '무지개빛 구름바퀴':'./images/flower-assets/card-rainbow-cloud-wheel-20260913.webp',
+            '별 연꽃 시간 고리':card('/tmp/IMG_1823.PNG',(55,1005,405,1475),'card-star-lotus-time-ring-20260913.webp'),
+            '연분홍 앵초':card('/tmp/IMG_1825.PNG',(55,560,405,1025),'card-pink-primrose-20260913.webp'),
+            '눈 내린 앵초':card('/tmp/IMG_1825.PNG',(765,560,1115,1025),'card-snow-primrose-20260913.webp'),
+            '주황불꽃 심비디움':card('/tmp/IMG_1825.PNG',(55,1465,405,1935),'card-orange-cymbidium-20260913.webp'),
+            '주황 불꽃 심비디움':'./images/flower-assets/card-orange-cymbidium-20260913.webp',
+            '비취 심비디움':card('/tmp/IMG_1825.PNG',(410,1465,760,1935),'card-jade-cymbidium-20260913.webp'),
+            '밝은 노랑 히비스커스':card('/tmp/IMG_1826.PNG',(765,1465,1115,1935),'card-bright-yellow-hibiscus-20260913.webp'),
+          }
+
+          def patch_json_object(path, pattern, prefix, suffix):
+              p=Path(path); s=p.read_text(encoding='utf-8')
+              m=re.search(pattern,s,re.S)
+              if not m: raise SystemExit('object not found in '+path)
+              obj=json.loads(m.group(1)); obj.update(mappings)
+              enc=json.dumps(obj,ensure_ascii=False,separators=(',',':'))
+              p.write_text(s[:m.start()]+prefix+enc+suffix+s[m.end():],encoding='utf-8')
+
+          patch_json_object('app.html',r'const IMAGES=(\{.*?\});\s*const norm=','const IMAGES=',';\nconst norm=')
+          patch_json_object('guild-catalog-images.js',r'window\.GUILD_CATALOG_IMAGES=(\{.*\});\s*$','window.GUILD_CATALOG_IMAGES=',';\n')
+
+          ip=Path('index.html'); s=ip.read_text(encoding='utf-8')
+          start='// CARD_IMAGE_FIX_20260913_START'; end='// CARD_IMAGE_FIX_20260913_END'
+          s=re.sub(re.escape(start)+r'.*?'+re.escape(end)+r'\n?','',s,flags=re.S)
+          marker='const imageAliases='
+          if marker not in s: raise SystemExit('index marker missing')
+          block=start+'\nObject.assign(missingImages,'+json.dumps(mappings,ensure_ascii=False,separators=(',',':'))+');\n'+end+'\n'
+          ip.write_text(s.replace(marker,block+marker,1),encoding='utf-8')
+
+          # 실제 파일 존재/규격 검증
+          for flower,ref in mappings.items():
+              if ref.startswith('./'):
+                  p=Path(ref[2:].split('?',1)[0])
+                  if not p.exists(): raise SystemExit(f'missing: {flower} -> {p}')
+          for p in Path('images/flower-assets').glob('card-*-20260913.webp'):
+              if Image.open(p).size != (424,574): raise SystemExit('size mismatch '+str(p))
+          print('repaired',len(mappings),'mappings')
+          PY
+      - name: Validate JavaScript
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          a=s.find('<script>'); b=s.rfind('</script>')
+          if a<0 or b<=a: raise SystemExit('index script markers missing')
+          Path('/tmp/index.js').write_text(s[a+8:b],encoding='utf-8')
+          PY
+          node --check /tmp/index.js
+          git diff --check
+      - name: Commit fixes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app.html index.html guild-catalog-images.js images/flower-assets
+          git commit -m '꽃 카드 크기 통일 및 엑박 8종 복구' || exit 0
+          git push
