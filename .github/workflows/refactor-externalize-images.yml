@@ -1,0 +1,55 @@
+name: Refactor externalize flower images
+on:
+  push:
+    branches:
+      - 'refactor/externalize-flower-images-20260912'
+permissions:
+  contents: write
+jobs:
+  externalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Externalize embedded image data
+        run: python3 tools/externalize_image_data.py
+      - name: Validate outer index JavaScript
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          a=s.find('<script>')
+          b=s.rfind('</script>')
+          if a < 0 or b < 0 or b <= a:
+              raise SystemExit('index outer script markers missing')
+          js=s[a+len('<script>'):b]
+          Path('/tmp/index-outer.js').write_text(js,encoding='utf-8')
+          PY
+          node --check /tmp/index-outer.js
+      - name: Validate generated paths and sizes
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          limits={'app.html':500_000,'index.html':200_000,'guild-catalog-images.js':150_000}
+          for name,limit in limits.items():
+              size=Path(name).stat().st_size
+              print(name,size)
+              if size > limit:
+                  raise SystemExit(f'{name} still too large: {size} > {limit}')
+          app=Path('app.html').read_text(encoding='utf-8')
+          refs=re.findall(r'\./images/flower-assets/[0-9a-f]{20}\.(?:png|jpg|webp)',app)
+          if len(refs) < 100:
+              raise SystemExit(f'too few external image references in app.html: {len(refs)}')
+          for name in ['app.html','index.html','guild-catalog-images.js']:
+              if 'data:image/' in Path(name).read_text(encoding='utf-8'):
+                  raise SystemExit(f'embedded data image remains in {name}')
+          print('app image refs:',len(refs),'unique:',len(set(refs)))
+          PY
+          git diff --check
+      - name: Commit refactored assets
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app.html index.html guild-catalog-images.js flower-update.js images/flower-assets images/*.js
+          git commit -m '외장 이미지 파일 구조로 도감 경량화' || exit 0
+          git push
