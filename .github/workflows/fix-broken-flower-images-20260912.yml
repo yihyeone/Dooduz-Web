@@ -43,7 +43,6 @@ jobs:
             '무지개빛 구름바퀴':'./images/flower-assets/ef9cb9c65c8de6eb0220.webp'
           }
 
-          # Correct authoritative name and remove the final embedded image fragment.
           fup = Path('flower-update.js')
           fup.write_text(fup.read_text(encoding='utf-8').replace('명월유향','명월유합'), encoding='utf-8')
           Path('images/sep12-extra-06.js').write_text(
@@ -62,7 +61,7 @@ jobs:
               encoded = json.dumps(obj, ensure_ascii=False, separators=(',',':'))
               p.write_text(s[:m.start()] + prefix + encoded + suffix + s[m.end():], encoding='utf-8')
 
-          patch_json_object('app.html', r'const IMAGES=(\{.*?\});\s*const IMG=', 'const IMAGES=', ';\nconst IMG=')
+          patch_json_object('app.html', r'const IMAGES=(\{.*?\});\s*const norm=', 'const IMAGES=', ';\nconst norm=')
           patch_json_object('guild-catalog-images.js', r'window\.GUILD_CATALOG_IMAGES=(\{.*\});\s*$', 'window.GUILD_CATALOG_IMAGES=', ';\n')
 
           ip = Path('index.html')
@@ -103,4 +102,4 @@ jobs:
           git add app.html index.html guild-catalog-images.js flower-update.js images/sep12-extra-06.js
           git commit -m '엑박 꽃 이미지 매핑 일괄 복구' || exit 0
           git push
-# trigger: fixed external path
+# trigger: app regex fixed
