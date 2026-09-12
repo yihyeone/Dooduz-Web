@@ -42,7 +42,6 @@ jobs:
             '무지개빛 구름바퀴':'./images/flower-assets/ef9cb9c65c8de6eb0220.webp'
           }
 
-          # Externalize the one remaining embedded Sep-12 image.
           extra_path = Path('images/sep12-extra-06.js')
           extra = extra_path.read_text(encoding='utf-8')
           data_match = re.search(r'("별 연꽃 시간 고리"\s*:\s*")data:image/(?:webp|png|jpeg|jpg);base64,([A-Za-z0-9+/=]+)(")', extra)
@@ -62,10 +61,8 @@ jobs:
                   raise SystemExit('별 연꽃 시간 고리 image source not found')
               mappings['별 연꽃 시간 고리'] = path_match.group(1)
 
-          # Correct the authoritative flower name typo in supplemental data.
           fup = Path('flower-update.js')
-          ftxt = fup.read_text(encoding='utf-8').replace('명월유향','명월유합')
-          fup.write_text(ftxt, encoding='utf-8')
+          fup.write_text(fup.read_text(encoding='utf-8').replace('명월유향','명월유합'), encoding='utf-8')
 
           def patch_json_object(path, pattern, prefix, suffix):
               p = Path(path)
@@ -76,45 +73,26 @@ jobs:
               obj = json.loads(m.group(1))
               obj.update(mappings)
               encoded = json.dumps(obj, ensure_ascii=False, separators=(',',':'))
-              s = s[:m.start()] + prefix + encoded + suffix + s[m.end():]
-              p.write_text(s, encoding='utf-8')
+              p.write_text(s[:m.start()] + prefix + encoded + suffix + s[m.end():], encoding='utf-8')
 
-          patch_json_object(
-              'app.html',
-              r'const IMAGES=(\{.*?\});\s*const IMG=',
-              'const IMAGES=',
-              ';\nconst IMG='
-          )
-          patch_json_object(
-              'guild-catalog-images.js',
-              r'window\.GUILD_CATALOG_IMAGES=(\{.*\});\s*$',
-              'window.GUILD_CATALOG_IMAGES=',
-              ';\n'
-          )
+          patch_json_object('app.html', r'const IMAGES=(\{.*?\});\s*const IMG=', 'const IMAGES=', ';\nconst IMG=')
+          patch_json_object('guild-catalog-images.js', r'window\.GUILD_CATALOG_IMAGES=(\{.*\});\s*$', 'window.GUILD_CATALOG_IMAGES=', ';\n')
 
-          # index.html patches app.html at runtime. Keep a compact explicit override there too.
           ip = Path('index.html')
           s = ip.read_text(encoding='utf-8')
-          start = '// BROKEN_IMAGE_FIX_20260912_START'
-          end = '// BROKEN_IMAGE_FIX_20260912_END'
+          start = '// BROKEN_IMAGE_FIX_20260912_START'; end = '// BROKEN_IMAGE_FIX_20260912_END'
           s = re.sub(re.escape(start)+r'.*?'+re.escape(end)+r'\n?', '', s, flags=re.S)
           marker = 'const imageAliases='
-          if marker not in s:
-              raise SystemExit('index marker missing')
+          if marker not in s: raise SystemExit('index marker missing')
           block = start+'\nObject.assign(missingImages,'+json.dumps(mappings, ensure_ascii=False, separators=(',',':'))+');\n'+end+'\n'
-          s = s.replace(marker, block+marker, 1)
-          ip.write_text(s, encoding='utf-8')
+          ip.write_text(s.replace(marker, block+marker, 1), encoding='utf-8')
 
-          # Ensure every local mapping target exists (strip cache query strings).
           missing=[]
           for flower, ref in mappings.items():
               if ref.startswith('./'):
                   local=Path(ref[2:].split('?',1)[0])
                   if not local.exists(): missing.append((flower,str(local)))
-          if missing:
-              raise SystemExit('missing image files: '+repr(missing))
-
-          # No embedded image should remain in the core runtime maps.
+          if missing: raise SystemExit('missing image files: '+repr(missing))
           for file in ['app.html','index.html','guild-catalog-images.js','images/sep12-extra-06.js']:
               if 'data:image/' in Path(file).read_text(encoding='utf-8'):
                   raise SystemExit('embedded image remains in '+file)
@@ -138,3 +116,4 @@ jobs:
           git add app.html index.html guild-catalog-images.js flower-update.js images/sep12-extra-06.js images/flower-assets
           git commit -m '엑박 꽃 이미지 매핑 일괄 복구' || exit 0
           git push
+# trigger: 2026-09-12T23:48+09:00
