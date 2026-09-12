@@ -37,7 +37,11 @@ for path in TARGETS:
     before = len(text)
 
     def repl(m: re.Match[str]) -> str:
-        raw = base64.b64decode(m.group("b64"), validate=True)
+        payload = m.group("b64")
+        # Some historical data URIs omit RFC4648 trailing padding. Restore only
+        # the required padding; decoded bytes remain byte-for-byte deterministic.
+        payload += "=" * (-len(payload) % 4)
+        raw = base64.b64decode(payload, validate=False)
         digest = hashlib.sha256(raw).hexdigest()[:20]
         ext = EXT[m.group("mime")]
         rel = f"./images/flower-assets/{digest}.{ext}"
