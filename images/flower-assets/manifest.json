@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "asset_count": 376,
+  "files": {
+    "app.html": {
+      "replaced": 322,
+      "bytes_before": 2349810,
+      "bytes_after": 31956,
+      "remaining_data_image_tokens": 0
+    },
+    "index.html": {
+      "replaced": 39,
+      "bytes_before": 478712,
+      "bytes_after": 21839,
+      "remaining_data_image_tokens": 0
+    },
+    "guild-catalog-images.js": {
+      "replaced": 322,
+      "bytes_before": 2337668,
+      "bytes_after": 19814,
+      "remaining_data_image_tokens": 0
+    },
+    "flower-update.js": {
+      "replaced": 0,
+      "bytes_before": 4761,
+      "bytes_after": 4761,
+      "remaining_data_image_tokens": 0
+    },
+    "images/missing-flower-images.js": {
+      "replaced": 2,
+      "bytes_before": 16704,
+      "bytes_after": 154,
+      "remaining_data_image_tokens": 0
+    },
+    "images/new-flower-images.js": {
+      "replaced": 6,
+      "bytes_before": 41848,
+      "bytes_after": 398,
+      "remaining_data_image_tokens": 0
+    },
+    "images/sep12-extra-01.js": {
+      "replaced": 1,
+      "bytes_before": 11496,
+      "bytes_after": 133,
+      "remaining_data_image_tokens": 0
+    },
+    "images/sep12-extra-02.js": {
+      "replaced": 1,
+      "bytes_before": 9058,
+      "bytes_after": 135,
+      "remaining_data_image_tokens": 0
+    },
+    "images/sep12-extra-03.js": {
+      "replaced": 1,
+      "bytes_before": 8840,
+      "bytes_after": 133,
+      "remaining_data_image_tokens": 0
+    },
+    "images/sep12-extra-04.js": {
+      "replaced": 1,
+      "bytes_before": 8364,
+      "bytes_after": 134,
+      "remaining_data_image_tokens": 0
+    },
+    "images/sep12-extra-05.js": {
+      "replaced": 1,
+      "bytes_before": 6029,
+      "bytes_after": 135,
+      "remaining_data_image_tokens": 0
+    },
+    "images/sep12-extra-06.js": {
+      "replaced": 0,
+      "bytes_before": 5731,
+      "bytes_after": 5731,
+      "remaining_data_image_tokens": 1
+    },
+    "images/sep12-extra-07.js": {
+      "replaced": 1,
+      "bytes_before": 4657,
+      "bytes_after": 130,
+      "remaining_data_image_tokens": 0
+    },
+    "images/sep12-extra-08.js": {
+      "replaced": 1,
+      "bytes_before": 4969,
+      "bytes_after": 130,
+      "remaining_data_image_tokens": 0
+    },
+    "images/sep12-extra-09.js": {
+      "replaced": 1,
+      "bytes_before": 5022,
+      "bytes_after": 131,
+      "remaining_data_image_tokens": 0
+    },
+    "images/sep12-extra-10.js": {
+      "replaced": 1,
+      "bytes_before": 6092,
+      "bytes_after": 133,
+      "remaining_data_image_tokens": 0
+    },
+    "images/sep12-extra-11.js": {
+      "replaced": 1,
+      "bytes_before": 6055,
+      "bytes_after": 132,
+      "remaining_data_image_tokens": 0
+    },
+    "images/sep12-images-1.js": {
+      "replaced": 2,
+      "bytes_before": 16574,
+      "bytes_after": 196,
+      "remaining_data_image_tokens": 0
+    },
+    "images/sep12-images-2.js": {
+      "replaced": 2,
+      "bytes_before": 14808,
+      "bytes_after": 190,
+      "remaining_data_image_tokens": 0
+    },
+    "images/sep12-images-4.js": {
+      "replaced": 2,
+      "bytes_before": 17132,
+      "bytes_after": 195,
+      "remaining_data_image_tokens": 0
+    }
+  }
+}

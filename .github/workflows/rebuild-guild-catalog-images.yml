@@ -18,7 +18,10 @@ jobs:
           from pathlib import Path
           import re, json
           app=Path('app.html').read_text(encoding='utf-8')
-          pairs=re.findall(r'''["']([^"'\\]{1,120})["']\s*:\s*["'](data:image/(?:png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+)["']''', app)
+          # After the 2026-09 refactor, app.html stores image paths instead of embedded base64.
+          # Keep data: support for rollback compatibility.
+          value=r'(?:data:image/(?:png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+|\./images/flower-assets/[0-9a-f]+\.(?:png|jpg|jpeg|webp))'
+          pairs=re.findall(r'''["']([^"'\\]{1,120})["']\s*:\s*["']('''+value+r''')["']''', app)
           images={k:v for k,v in pairs}
           if len(images) < 100:
               raise SystemExit(f'Image extraction looks wrong: only {len(images)} entries')
