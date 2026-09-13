@@ -19,7 +19,7 @@ header{display:flex;justify-content:space-between;align-items:center;padding:12p
 
 .head-actions{display:flex;align-items:flex-end;gap:8px;flex:none}.view-toggle{display:flex;padding:2px;background:#efe6d9;border:1px solid var(--line);border-radius:10px;gap:2px}.view-toggle button{border:0;background:transparent;color:var(--muted);border-radius:7px;padding:5px 7px;font-size:9px;font-weight:900;line-height:1;white-space:nowrap}.view-toggle button.active{background:white;color:var(--brown);box-shadow:0 1px 4px rgba(88,55,21,.12)}
 .grid.text-view{grid-template-columns:1fr;gap:6px}.grid.text-view .card{width:100%;border-radius:12px;box-shadow:none;background:rgba(255,255,255,.9)}.grid.text-view .thumb{display:none}.grid.text-view .info{padding:10px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}.grid.text-view .info h3{font-size:13px;margin:0;min-width:0}.grid.text-view .meta{font-size:10px;gap:8px;justify-content:flex-end;white-space:nowrap}.grid.text-view .meta strong{font-size:10px}
-</style>
+.grid.text-view .card.grade-UR .info h3{color:#c48700}.grid.text-view .card.grade-SSR .info h3{color:#9b59b6}.grid.text-view .card.grade-SR .info h3{color:#4f86c6}.grid.text-view .card.grade-R .info h3{color:#5f9d55}.grid.text-view .card.grade-N .info h3{color:#8b7b6a}</style>
 <style id="doguldan-popup-viewport-fix">
 dialog#sheet.sheet {
   position: fixed !important;
@@ -98,4 +98,4 @@ refresh.onclick=load;
 load();
 </script>
 <script id="doguldan-view-mode">(()=>{const grid=document.getElementById("grid");const buttons=[...document.querySelectorAll(".view-toggle [data-view]")];if(!grid||!buttons.length)return;const KEY="dooduzViewMode";const apply=mode=>{const list=mode==="LIST";grid.classList.toggle("text-view",list);buttons.forEach(btn=>{const on=btn.dataset.view===mode;btn.classList.toggle("active",on);btn.setAttribute("aria-pressed",on?"true":"false")});try{localStorage.setItem(KEY,mode)}catch(e){}};let saved="CARD";try{saved=localStorage.getItem(KEY)==="LIST"?"LIST":"CARD"}catch(e){}apply(saved);buttons.forEach(btn=>btn.addEventListener("click",()=>apply(btn.dataset.view)))})();</script>
-</body></html>
+<script id="doguldan-list-grade-colors">(()=>{const apply=()=>{document.querySelectorAll('#grid .card').forEach(card=>{card.classList.remove('grade-UR','grade-SSR','grade-SR','grade-R','grade-N');const meta=card.querySelector('.meta');if(!meta)return;const t=(meta.textContent||'').toUpperCase();const g=['UR','SSR','SR','R','N'].find(x=>new RegExp('(^|\s)'+x+'(\s|$)').test(t));if(g)card.classList.add('grade-'+g);});};apply();const grid=document.getElementById('grid');if(grid)new MutationObserver(apply).observe(grid,{childList:true,subtree:true});})();</script></body></html>
