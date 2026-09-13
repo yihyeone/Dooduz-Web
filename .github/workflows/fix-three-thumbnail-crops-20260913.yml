@@ -11,6 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install Pillow
+        run: sudo apt-get update -qq && sudo apt-get install -y python3-pil
       - name: Download original game screenshot
         run: |
           set -e
@@ -21,15 +23,10 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          import json, re, subprocess, sys
-          try:
-              from PIL import Image
-          except Exception:
-              subprocess.check_call([sys.executable,'-m','pip','install','pillow'])
-              from PIL import Image
+          from PIL import Image
+          import json, re
 
           src=Image.open('/tmp/source.png').convert('RGB')
-          # Exact card bounds verified against the stored game screenshot.
           jobs={
             '구름빛 사절':((770,570,1110,1015),'card-cloud-emissary-20260913b.webp'),
             '서리구름마':((63,1030,400,1475),'card-frost-cloud-horse-20260913b.webp'),
@@ -39,10 +36,8 @@ jobs:
           outdir=Path('images/flower-assets'); outdir.mkdir(parents=True,exist_ok=True)
           for name,(box,fn) in jobs.items():
               card=src.crop(box)
-              # Match the app's canonical 212:279 thumbnail ratio with a full-card crop.
               target_ratio=212/279
-              w,h=card.size
-              r=w/h
+              w,h=card.size; r=w/h
               if r>target_ratio:
                   nw=round(h*target_ratio); x=(w-nw)//2; card=card.crop((x,0,x+nw,h))
               elif r<target_ratio:
@@ -71,8 +66,7 @@ jobs:
           p.write_text(s.replace(marker,block+marker,1),encoding='utf-8')
 
           for name,ref in mappings.items():
-              fp=Path(ref[2:])
-              im=Image.open(fp)
+              im=Image.open(Path(ref[2:]))
               if im.size!=(424,558): raise SystemExit(f'{name}: wrong size {im.size}')
           print(mappings)
           PY
