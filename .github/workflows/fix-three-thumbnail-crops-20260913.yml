@@ -1,0 +1,96 @@
+name: Fix three thumbnail crops 2026-09-13
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-three-thumbnail-crops-20260913.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download original game screenshot
+        run: |
+          set -e
+          curl -L --fail --retry 2 -o /tmp/source.png 'https://drive.usercontent.google.com/download?id=1Y2T3uliGZD01__9FDETQVAiv329LeRrV&export=download&confirm=t' || \
+          curl -L --fail --retry 2 -o /tmp/source.png 'https://drive.google.com/uc?export=download&id=1Y2T3uliGZD01__9FDETQVAiv329LeRrV'
+          file /tmp/source.png
+      - name: Crop full cards and update mappings
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, re, subprocess, sys
+          try:
+              from PIL import Image
+          except Exception:
+              subprocess.check_call([sys.executable,'-m','pip','install','pillow'])
+              from PIL import Image
+
+          src=Image.open('/tmp/source.png').convert('RGB')
+          # Exact card bounds verified against the stored game screenshot.
+          jobs={
+            '구름빛 사절':((770,570,1110,1015),'card-cloud-emissary-20260913b.webp'),
+            '서리구름마':((63,1030,400,1475),'card-frost-cloud-horse-20260913b.webp'),
+            '별의 시간의 사도':((770,1030,1110,1475),'card-time-apostle-20260913b.webp'),
+          }
+          mappings={}
+          outdir=Path('images/flower-assets'); outdir.mkdir(parents=True,exist_ok=True)
+          for name,(box,fn) in jobs.items():
+              card=src.crop(box)
+              # Match the app's canonical 212:279 thumbnail ratio with a full-card crop.
+              target_ratio=212/279
+              w,h=card.size
+              r=w/h
+              if r>target_ratio:
+                  nw=round(h*target_ratio); x=(w-nw)//2; card=card.crop((x,0,x+nw,h))
+              elif r<target_ratio:
+                  nh=round(w/target_ratio); y=(h-nh)//2; card=card.crop((0,y,w,y+nh))
+              card=card.resize((424,558),Image.Resampling.LANCZOS)
+              card.save(outdir/fn,'WEBP',quality=88,method=6)
+              mappings[name]='./images/flower-assets/'+fn
+
+          def patch_map(path, pattern, prefix, suffix):
+              p=Path(path); s=p.read_text(encoding='utf-8')
+              m=re.search(pattern,s,re.S)
+              if not m: raise SystemExit('mapping object not found: '+path)
+              obj=json.loads(m.group(1)); obj.update(mappings)
+              enc=json.dumps(obj,ensure_ascii=False,separators=(',',':'))
+              p.write_text(s[:m.start()]+prefix+enc+suffix+s[m.end():],encoding='utf-8')
+
+          patch_map('app.html',r'const IMAGES=(\{.*?\});\s*const norm=','const IMAGES=',';\nconst norm=')
+          patch_map('guild-catalog-images.js',r'window\.GUILD_CATALOG_IMAGES=(\{.*\});\s*$','window.GUILD_CATALOG_IMAGES=',';\n')
+
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          start='// THUMB_CROP_FIX_20260913_START'; end='// THUMB_CROP_FIX_20260913_END'
+          s=re.sub(re.escape(start)+r'.*?'+re.escape(end)+r'\n?','',s,flags=re.S)
+          marker='const imageAliases='
+          if marker not in s: raise SystemExit('index marker missing')
+          block=start+'\nObject.assign(missingImages,'+json.dumps(mappings,ensure_ascii=False,separators=(',',':'))+');\n'+end+'\n'
+          p.write_text(s.replace(marker,block+marker,1),encoding='utf-8')
+
+          for name,ref in mappings.items():
+              fp=Path(ref[2:])
+              im=Image.open(fp)
+              if im.size!=(424,558): raise SystemExit(f'{name}: wrong size {im.size}')
+          print(mappings)
+          PY
+      - name: Validate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          a=s.find('<script>'); b=s.rfind('</script>')
+          if a<0 or b<=a: raise SystemExit('index script markers missing')
+          Path('/tmp/index.js').write_text(s[a+8:b],encoding='utf-8')
+          PY
+          node --check /tmp/index.js
+          git diff --check
+      - name: Commit crop fixes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app.html index.html guild-catalog-images.js images/flower-assets/card-cloud-emissary-20260913b.webp images/flower-assets/card-frost-cloud-horse-20260913b.webp images/flower-assets/card-time-apostle-20260913b.webp
+          git commit -m '구름빛 사절 등 썸네일 카드 테두리 크롭 수정' || exit 0
+          git push
