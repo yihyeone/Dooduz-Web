@@ -93,8 +93,11 @@ const imageAliases=
     s=s.replace('<body>','<body onscroll="document.getElementById(&quot;dooduzTopBtn&quot;).classList.toggle(&quot;show&quot;,window.scrollY&gt;1100)">');
     s=s.replace('</body>','<button id="dooduzTopBtn" class="dooduz-top-btn" type="button" aria-label="맨 위로" onclick="window.scrollTo({top:0,behavior:&quot;smooth&quot;})"><span aria-hidden="true">↑</span><small>TOP</small></button></body>');
     s=s.replace('</head>', `<style id="dooduz-sticky-gap-fix">
-/* Fill transparent seams between sticky top tabs/search/filter controls */
-[style*="position: sticky"], [style*="position:sticky"]{background-color:#f7f1e7}
+/* Keep the home title tab and search/filter controls fixed while the page scrolls. */
+html{overflow-y:auto!important}
+body{overflow:visible!important}
+.main-header{position:-webkit-sticky!important;position:sticky!important;top:0!important;z-index:30!important}
+.tools{position:-webkit-sticky!important;position:sticky!important;top:calc(env(safe-area-inset-top,0px) + 54px)!important;z-index:29!important;background:#fffaf0!important}
 </style></head>`);document.open();document.write(s);document.close();
   }catch(e){document.body.innerHTML='<div style="font-family:sans-serif;padding:30px">페이지를 불러오지 못했습니다. 새로고침해주세요.</div>'}
 })();
