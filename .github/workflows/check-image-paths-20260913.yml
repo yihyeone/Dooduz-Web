@@ -1,0 +1,26 @@
+name: Check image paths 2026-09-13
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/check-image-paths-20260913.yml'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check mapped image files
+        run: |
+          python3 - <<'PY'
+          import json,re,os
+          s=open('app.html',encoding='utf-8').read()
+          m=re.search(r'const IMAGES=(\{.*?\});\s*const norm=',s,re.S)
+          data=json.loads(m.group(1))
+          missing=[]
+          for name,ref in data.items():
+              path=ref.split('?',1)[0]
+              if path.startswith('./') and not os.path.exists(path[2:]):
+                  missing.append((name,ref))
+          print('MISSING_COUNT',len(missing))
+          for row in missing: print('MISSING',row[0],row[1])
+          PY
