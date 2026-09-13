@@ -37,6 +37,10 @@ header{display:flex;justify-content:space-between;align-items:center;padding:12p
 <script>
 const CSV="https://docs.google.com/spreadsheets/d/e/2PACX-1vSighkaGKMuouQNsjGsanPYmZE9jJ03_mIqUJ4RnFPhr5LKKVwNf2ZrgFpRdPl1cSDn3s7t5xTOOyo0/pub?gid=129712828&single=true&output=csv";
 const IMAGES=window.GUILD_CATALOG_IMAGES||{};
+
+// FLOWER_IMAGE_UPDATE_20260914_START
+Object.assign(IMAGES,{"금빛 불꽃 산란":"./images/flower-assets/card-gold-fire-scatter-20260914.webp","황금 들꽃":"./images/flower-assets/card-golden-wildflower-20260914.webp","꿀단지 꽃 이야기":"./images/flower-assets/card-honey-pot-flower-story-20260914.webp","꽃 속의 단잠":"./images/flower-assets/card-sleep-among-flowers-20260914.webp","벌꿀 꽃의 안식처":"./images/flower-assets/card-honey-flower-rest-20260914.webp","꿀들판 선경":"./images/flower-assets/card-honey-field-seongyeong-20260914.webp"});
+// FLOWER_IMAGE_UPDATE_20260914_END
 const norm=s=>String(s||'').replace(/[\s·ㆍ•・]/g,'').toLowerCase();
 const IMG=new Map(Object.entries(IMAGES).map(([k,v])=>[norm(k),v]));
 const ESC=s=>String(s??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
