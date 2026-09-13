@@ -1,0 +1,126 @@
+name: Restore historical image mappings 2026-09-13
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/restore-historical-image-mappings-20260913.yml'
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore image mappings that disappeared
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, re, subprocess, os
+
+          BASE='9e5b768374e064631c987d6744f16ed7e64c4412'
+          app_path=Path('app.html')
+          current_text=app_path.read_text(encoding='utf-8')
+          old_text=subprocess.check_output(['git','show',f'{BASE}:app.html'],text=True)
+
+          def app_map(text):
+              m=re.search(r'const IMAGES=(\{.*?\});\s*const norm=',text,re.S)
+              if not m:
+                  raise SystemExit('IMAGES map not found')
+              return m, json.loads(m.group(1))
+
+          cm,current=app_map(current_text)
+          _,old=app_map(old_text)
+
+          def exists(ref):
+              clean=ref.split('?',1)[0]
+              return clean.startswith('./') and Path(clean[2:]).exists()
+
+          restored={}
+          for name,oldref in old.items():
+              if not exists(oldref):
+                  continue
+              cur=current.get(name)
+              if cur is None or not exists(cur):
+                  current[name]=oldref
+                  restored[name]=oldref
+
+          # Preserve all newer mappings; only add/repair historical mappings.
+          encoded=json.dumps(current,ensure_ascii=False,separators=(',',':'))
+          new_text=current_text[:cm.start(1)]+encoded+current_text[cm.end(1):]
+          app_path.write_text(new_text,encoding='utf-8')
+
+          # Keep guild image map synchronized without deleting newer keys.
+          gp=Path('guild-catalog-images.js')
+          gs=gp.read_text(encoding='utf-8')
+          gm=re.search(r'window\.GUILD_CATALOG_IMAGES=(\{.*\});\s*$',gs,re.S)
+          if not gm:
+              raise SystemExit('guild image map not found')
+          gmap=json.loads(gm.group(1)); gmap.update(restored)
+          gp.write_text('window.GUILD_CATALOG_IMAGES='+json.dumps(gmap,ensure_ascii=False,separators=(',',':'))+';\n',encoding='utf-8')
+
+          # Root index fetches app.html and rewrites it. Add the same restoration override there.
+          ip=Path('index.html')
+          ix=ip.read_text(encoding='utf-8')
+          start='// HISTORICAL_IMAGE_RESTORE_20260913_START'
+          end='// HISTORICAL_IMAGE_RESTORE_20260913_END'
+          ix=re.sub(re.escape(start)+r'.*?'+re.escape(end)+r'\n?','',ix,flags=re.S)
+          marker='const imageAliases='
+          if marker not in ix:
+              raise SystemExit('index imageAliases marker missing')
+          block=start+'\nObject.assign(missingImages,'+json.dumps(restored,ensure_ascii=False,separators=(',',':'))+');\n'+end+'\n'
+          ix=ix.replace(marker,block+marker,1)
+          ip.write_text(ix,encoding='utf-8')
+
+          print('RESTORED_COUNT',len(restored))
+          for name,ref in sorted(restored.items()):
+              print('RESTORED',name,ref)
+
+          # Full mapping check after restore. Remaining missing refs are true file absences,
+          # not mappings accidentally lost from the historical catalog.
+          missing=[]
+          for name,ref in current.items():
+              clean=ref.split('?',1)[0]
+              if clean.startswith('./') and not Path(clean[2:]).exists():
+                  missing.append((name,ref))
+          print('REMAINING_MISSING_PATHS',len(missing))
+          for name,ref in missing:
+              print('MISSING',name,ref)
+          PY
+      - name: Validate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          s=Path('app.html').read_text(encoding='utf-8')
+          m=re.search(r'const IMAGES=(\{.*?\});\s*const norm=',s,re.S)
+          data=json.loads(m.group(1))
+          # Representative cards seen in the user's current screenshots must resolve again.
+          expected=['새벽빛 목향장미','서리꽃 맥문동','아련한 자색 아스틸베','아지랑이빛 장미','연보라 설강화','연분홍 마거리트','연분홍 조팝나무','연자색 산호꽃','봄빛 심비디움','분홍 안개 맥문동','분홍구름 코스모스','붉은 눈 목향장미','구름빛 아스틸베','구름자수 작약','노을빛 산호꽃','단풍 온시디움','달빛 아네모네','따스한 여름 햇살','레몬색 윙윙 장미','맑은 봉우리 장미','방울의 가벼운 춤','벚꽃 온시디움']
+          bad=[]
+          for name in expected:
+              ref=data.get(name)
+              if not ref:
+                  bad.append((name,'no mapping'))
+              else:
+                  clean=ref.split('?',1)[0]
+                  if clean.startswith('./') and not Path(clean[2:]).exists():
+                      bad.append((name,'file missing'))
+          if bad:
+              raise SystemExit('representative restore failed: '+repr(bad))
+          ix=Path('index.html').read_text(encoding='utf-8')
+          a=ix.find('<script>'); b=ix.rfind('</script>')
+          if a<0 or b<=a: raise SystemExit('index script markers missing')
+          Path('/tmp/index.js').write_text(ix[a+8:b],encoding='utf-8')
+          print('representative mappings OK:',len(expected))
+          PY
+          node --check /tmp/index.js
+          git diff --check
+      - name: Commit restored mappings
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app.html index.html guild-catalog-images.js
+          git commit -m '기존 꽃 이미지 매핑 누락 전수 복구' || exit 0
+          git push
