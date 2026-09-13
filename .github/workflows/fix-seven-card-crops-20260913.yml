@@ -1,0 +1,98 @@
+name: Fix seven card crops 2026-09-13
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-seven-card-crops-20260913.yml'
+permissions:
+  contents: write
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Pillow
+        run: python3 -m pip install --user pillow
+      - name: Download source screenshots
+        run: |
+          set -e
+          curl -L --fail --retry 2 -o /tmp/1822.png 'https://drive.usercontent.google.com/download?id=1Y2T3uliGZD01__9FDETQVAiv329LeRrV&export=download&confirm=t'
+          curl -L --fail --retry 2 -o /tmp/1823.png 'https://drive.usercontent.google.com/download?id=1dY8o2IfrEO9cY8uKFh2truObVfYUbYN7&export=download&confirm=t'
+          curl -L --fail --retry 2 -o /tmp/1829.png 'https://drive.usercontent.google.com/download?id=1IF0jhWc9NE8Ub881-VHQyV8wTyVyGmCH&export=download&confirm=t'
+          file /tmp/1822.png /tmp/1823.png /tmp/1829.png
+      - name: Re-crop seven full cards and update mappings
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import json,re
+
+          src={
+            '1822':Image.open('/tmp/1822.png').convert('RGB'),
+            '1823':Image.open('/tmp/1823.png').convert('RGB'),
+            '1829':Image.open('/tmp/1829.png').convert('RGB'),
+          }
+          # Exact full-card bounds from 1170x2532 game screenshots.
+          # Do not crop/zoom inside the card; only resize the complete card rectangle.
+          jobs={
+            '쌍둥이자리·성수쌍영':('1822',(63,570,400,1015),'card-gemini-seongsussangyeong-20260913c.webp'),
+            '피어나는 동심':('1822',(417,570,754,1015),'card-blooming-childhood-20260913c.webp'),
+            '화려한 서커스':('1822',(417,1030,754,1475),'card-colorful-circus-20260913c.webp'),
+            '곰 돛 구름배':('1823',(63,570,400,1015),'card-bear-sail-cloud-boat-20260913c.webp'),
+            '분홍빛 생일잔치':('1823',(417,570,754,1015),'card-pink-birthday-party-20260913c.webp'),
+            '핏빛 달의 피안화':('1823',(770,570,1110,1015),'card-bloodmoon-lycoris-20260913c.webp'),
+            '진홍빛 백일초':('1829',(417,1030,754,1475),'card-crimson-zinnia-20260913c.webp'),
+          }
+          outdir=Path('images/flower-assets'); outdir.mkdir(parents=True,exist_ok=True)
+          mappings={}
+          for name,(sid,box,fn) in jobs.items():
+              card=src[sid].crop(box)
+              card=card.resize((424,558),Image.Resampling.LANCZOS)
+              out=outdir/fn
+              card.save(out,'WEBP',quality=88,method=6)
+              mappings[name]='./images/flower-assets/'+fn
+              if Image.open(out).size!=(424,558):
+                  raise SystemExit(f'{name}: wrong output size')
+
+          def patch_map(path,pattern,prefix,suffix):
+              p=Path(path); s=p.read_text(encoding='utf-8')
+              m=re.search(pattern,s,re.S)
+              if not m: raise SystemExit('mapping object not found: '+path)
+              obj=json.loads(m.group(1)); obj.update(mappings)
+              enc=json.dumps(obj,ensure_ascii=False,separators=(',',':'))
+              p.write_text(s[:m.start()]+prefix+enc+suffix+s[m.end():],encoding='utf-8')
+
+          patch_map('app.html',r'const IMAGES=(\{.*?\});\s*const norm=','const IMAGES=',';\nconst norm=')
+          patch_map('guild-catalog-images.js',r'window\.GUILD_CATALOG_IMAGES=(\{.*\});\s*$','window.GUILD_CATALOG_IMAGES=',';\n')
+
+          p=Path('index.html'); s=p.read_text(encoding='utf-8')
+          start='// CARD_CROP_FIX_7_20260913_START'; end='// CARD_CROP_FIX_7_20260913_END'
+          s=re.sub(re.escape(start)+r'.*?'+re.escape(end)+r'\n?','',s,flags=re.S)
+          marker='const imageAliases='
+          if marker not in s: raise SystemExit('index marker missing')
+          block=start+'\nObject.assign(missingImages,'+json.dumps(mappings,ensure_ascii=False,separators=(',',':'))+');\n'+end+'\n'
+          p.write_text(s.replace(marker,block+marker,1),encoding='utf-8')
+
+          # Validate all mapped output files exist.
+          for name,ref in mappings.items():
+              if not Path(ref[2:]).exists(): raise SystemExit('missing '+name)
+          print(mappings)
+          PY
+      - name: Validate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          a=s.find('<script>'); b=s.rfind('</script>')
+          if a<0 or b<=a: raise SystemExit('index script markers missing')
+          Path('/tmp/index.js').write_text(s[a+8:b],encoding='utf-8')
+          PY
+          node --check /tmp/index.js
+          git diff --check
+      - name: Commit crop fixes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app.html index.html guild-catalog-images.js images/flower-assets/card-*-20260913c.webp
+          git commit -m '꽃 카드 7종 전체 테두리 기준 재크롭' || exit 0
+          git push
