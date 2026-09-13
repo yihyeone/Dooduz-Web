@@ -1,0 +1,89 @@
+name: Add text list view 2026-09-13
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/add-text-list-view-20260913.yml'
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Add card/list view toggle
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app.html')
+          s=p.read_text(encoding='utf-8')
+
+          # 1) View toggle UI beside result count.
+          old='<b id="count"></b></div>\n<div class="grid" id="grid">'
+          new='''<div class="head-actions"><b id="count"></b><div class="view-toggle" role="group" aria-label="보기 방식"><button type="button" class="active" data-view="CARD" aria-pressed="true">카드</button><button type="button" data-view="LIST" aria-pressed="false">목록</button></div></div></div>\n<div class="grid" id="grid">'''
+          if old not in s:
+              raise SystemExit('head/count marker not found')
+          s=s.replace(old,new,1)
+
+          # 2) List-mode styles. Insert before the first closing style tag.
+          css='''
+.head-actions{display:flex;align-items:flex-end;gap:8px;flex:none}.view-toggle{display:flex;padding:2px;background:#efe6d9;border:1px solid var(--line);border-radius:10px;gap:2px}.view-toggle button{border:0;background:transparent;color:var(--muted);border-radius:7px;padding:5px 7px;font-size:9px;font-weight:900;line-height:1;white-space:nowrap}.view-toggle button.active{background:white;color:var(--brown);box-shadow:0 1px 4px rgba(88,55,21,.12)}
+.grid.text-view{grid-template-columns:1fr;gap:6px}.grid.text-view .card{width:100%;border-radius:12px;box-shadow:none;background:rgba(255,255,255,.9)}.grid.text-view .thumb{display:none}.grid.text-view .info{padding:10px 12px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px}.grid.text-view .info h3{font-size:13px;margin:0;min-width:0}.grid.text-view .meta{font-size:10px;gap:8px;justify-content:flex-end;white-space:nowrap}.grid.text-view .meta strong{font-size:10px}
+'''
+          idx=s.find('</style>')
+          if idx<0:
+              raise SystemExit('style end not found')
+          s=s[:idx]+css+s[idx:]
+
+          # 3) Independent toggle script. It does not alter card rendering/detail behavior.
+          script='''
+<script id="doguldan-view-mode">
+(()=>{
+  const grid=document.getElementById('grid');
+  const buttons=[...document.querySelectorAll('.view-toggle [data-view]')];
+  if(!grid||!buttons.length)return;
+  const KEY='dooduzViewMode';
+  const apply=mode=>{
+    const list=mode==='LIST';
+    grid.classList.toggle('text-view',list);
+    buttons.forEach(btn=>{
+      const on=btn.dataset.view===mode;
+      btn.classList.toggle('active',on);
+      btn.setAttribute('aria-pressed',on?'true':'false');
+    });
+    try{localStorage.setItem(KEY,mode)}catch(e){}
+  };
+  let saved='CARD';
+  try{saved=localStorage.getItem(KEY)==='LIST'?'LIST':'CARD'}catch(e){}
+  apply(saved);
+  buttons.forEach(btn=>btn.addEventListener('click',()=>apply(btn.dataset.view)));
+})();
+</script>
+'''
+          marker='</body>'
+          if marker not in s:
+              raise SystemExit('body end not found')
+          s=s.replace(marker,script+marker,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+
+      - name: Validate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('app.html').read_text(encoding='utf-8')
+          assert 'class="view-toggle"' in s
+          assert '.grid.text-view' in s
+          assert 'dooduzViewMode' in s
+          assert 'data-view="CARD"' in s and 'data-view="LIST"' in s
+          PY
+          git diff --check
+
+      - name: Commit change
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app.html
+          git commit -m '홈 도감 카드·텍스트 목록 보기 추가' || exit 0
+          git push
