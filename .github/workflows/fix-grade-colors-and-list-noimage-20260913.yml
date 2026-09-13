@@ -1,0 +1,54 @@
+name: Fix grade colors and list no-image 2026-09-13
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-grade-colors-and-list-noimage-20260913.yml'
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch app styles
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app.html')
+          s=p.read_text(encoding='utf-8')
+
+          old='.grid.text-view .card.grade-UR .info h3{color:#A05070}.grid.text-view .card.grade-SSR .info h3{color:#806028}.grid.text-view .card.grade-SR .info h3{color:#684898}.grid.text-view .card.grade-R .info h3{color:#407090}.grid.text-view .card.grade-N .info h3{color:#587840}'
+          new='.card.grade-UR .info h3{color:#A05070}.card.grade-SSR .info h3{color:#806028}.card.grade-SR .info h3{color:#684898}.card.grade-R .info h3{color:#407090}.card.grade-N .info h3{color:#587840}'
+          if old not in s:
+              raise SystemExit('grade color rule marker not found')
+          s=s.replace(old,new,1)
+
+          old2='.grid.text-view .thumb{display:none}'
+          new2='.grid.text-view .thumb{display:none}.grid.text-view .card>:not(.info){display:none!important}'
+          if old2 not in s:
+              raise SystemExit('text-view thumb rule not found')
+          s=s.replace(old2,new2,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('app.html').read_text(encoding='utf-8')
+          assert '.card.grade-UR .info h3{color:#A05070}' in s
+          assert '.card.grade-SSR .info h3{color:#806028}' in s
+          assert '.card.grade-SR .info h3{color:#684898}' in s
+          assert '.card.grade-R .info h3{color:#407090}' in s
+          assert '.card.grade-N .info h3{color:#587840}' in s
+          assert '.grid.text-view .card>:not(.info){display:none!important}' in s
+          PY
+          git diff --check
+      - name: Commit change
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app.html
+          git commit -m '카드 등급색 적용 및 목록 NO IMAGE 제거' || exit 0
+          git push
