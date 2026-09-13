@@ -1,0 +1,42 @@
+name: Dim unowned cards in list view
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/list-unowned-dim-20260914.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch list view unowned style
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('app.html')
+          s=p.read_text(encoding='utf-8')
+          old='return `<button class="card grade-${ESC(x.grade)}" data-i="${i}">'
+          new='return `<button class="card grade-${ESC(x.grade)}${own?\'\':\' unowned\'}" data-i="${i}">'
+          if old not in s:
+              raise SystemExit('card render marker not found')
+          s=s.replace(old,new,1)
+          css='.grid.text-view .card.unowned{background:#eee7dc!important;border-color:#dfd3c4}.grid.text-view .card.unowned .meta strong{color:#958979!important}'
+          marker='.card.grade-N .info h3{color:#587840}'
+          if css not in s:
+              if marker not in s: raise SystemExit('grade css marker not found')
+              s=s.replace(marker,marker+'\n'+css,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validate
+        run: |
+          grep -q 'card.unowned' app.html
+          grep -q 'unowned' app.html
+          git diff --check
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app.html
+          git commit -m '목록형 미보유 카드 배경 구분' || exit 0
+          git push
