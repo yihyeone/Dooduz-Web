@@ -1,0 +1,179 @@
+name: Update latest card thumbnails 2026-09-13
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/update-latest-card-thumbnails-20260913.yml'
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install image compare tools
+        run: python3 -m pip install --user pillow imagehash
+      - name: Download latest catalog screenshots
+        run: |
+          set -e
+          mkdir -p /tmp/latest-cards
+          declare -A IDS=(
+            [1849]='1I2rgWfwsYfC5OT54DXAlh3QbILeG-yr2'
+            [1850]='1qth18g3DX51G0TOquQG9z0oiAcDfgiZV'
+            [1851]='1KkRHUj39BLZTEkchvHxP144v_KifJEkB'
+            [1852]='1NfPiURmEYhKc82DUnBqXTigRsJzgSmzx'
+            [1853]='1lysJBmx5NxOi1W3zXsAXq7UU0LjdAOiB'
+            [1854]='1AOo1_qR88of2WNhrZrw0Ou1xHLrSsLKi'
+            [1855]='1Z7fCJOHCDHvX_eNbu88eMEvBd4w-Cd_1'
+            [1856]='1s4UpcKdvrEjzAEW1P6XOQZlvwMcE73bl'
+            [1857]='17jJ7G9DFHCrHciOicekLPQdFucvzzVdp'
+            [1858]='1X6GvFNAWsrfZMrwT60eR2zaiWoJsSd6N'
+            [1859]='1bxjMr4zyXTl6VgJjtFMtNjai7d64IsGk'
+            [1860]='1FLLuHyMrHFKHSvlC3aVbTseDophCcFyG'
+            [1861]='1q7TGYaTyE7Qd875erLwlRUPPRp0TufQ6'
+            [1862]='1HG2z7pF73Vi3ivLgV8SLlfjTacjtD43U'
+          )
+          for n in "${!IDS[@]}"; do
+            id="${IDS[$n]}"
+            curl -L --fail --retry 2 -o "/tmp/latest-cards/IMG_${n}.PNG" "https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t" || \
+            curl -L --fail --retry 2 -o "/tmp/latest-cards/IMG_${n}.PNG" "https://drive.google.com/uc?export=download&id=${id}"
+          done
+      - name: Compare activation and level badge, update only improved cards
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import imagehash, json, re, hashlib, colorsys
+
+          root=Path('.')
+          app=Path('app.html').read_text(encoding='utf-8')
+          m=re.search(r'const IMAGES=(\{.*?\});\s*const norm=',app,re.S)
+          if not m: raise SystemExit('IMAGES map not found')
+          images=json.loads(m.group(1))
+
+          # Existing asset index. Multiple aliases can intentionally share one path.
+          path_to_names={}
+          refs={}
+          for name,ref in images.items():
+              clean=ref.split('?',1)[0]
+              if not clean.startswith('./'): continue
+              fp=root/clean[2:]
+              if not fp.exists(): continue
+              try:
+                  im=Image.open(fp).convert('RGB').resize((424,558),Image.Resampling.LANCZOS)
+              except Exception:
+                  continue
+              # Central illustration area: excludes level badge and flower-name band.
+              center=im.crop((35,70,389,438)).convert('L')
+              refs[name]=(clean, imagehash.phash(center), im)
+              path_to_names.setdefault(clean,[]).append(name)
+
+          boxes=[
+            (63,570,400,1015),(416,570,753,1015),(770,570,1110,1015),
+            (63,1030,400,1475),(416,1030,753,1475),(770,1030,1110,1475),
+            (63,1490,400,1935),(416,1490,753,1935),(770,1490,1110,1935),
+          ]
+
+          def normalize_card(src,box):
+              card=src.crop(box).convert('RGB')
+              # Screenshot card bounds are already the game card bounds. Preserve the whole frame.
+              return card.resize((424,558),Image.Resampling.LANCZOS)
+
+          def band_value(im):
+              # The inactive state applies a dark gray overlay. The lower name band is a reliable detector.
+              px=im.crop((20,435,404,530)).convert('HSV')
+              vals=[v for _,_,v in px.getdata()]
+              return sum(vals)/len(vals)
+
+          def badge_hash(im):
+              # Hash only the level badge. Same card + same level is stable even with tiny resize variation.
+              return imagehash.phash(im.crop((0,0,105,105)).convert('L'))
+
+          # Keep the best/latest occurrence for each matched flower.
+          observations={}
+          unmatched=[]
+          for shot in sorted(Path('/tmp/latest-cards').glob('IMG_*.PNG')):
+              src=Image.open(shot).convert('RGB')
+              for idx,box in enumerate(boxes,1):
+                  new=normalize_card(src,box)
+                  nh=imagehash.phash(new.crop((35,70,389,438)).convert('L'))
+                  best=None
+                  for name,(path,h,old) in refs.items():
+                      d=nh-h
+                      if best is None or d<best[0]: best=(d,name,path,old)
+                  if best is None or best[0]>24:
+                      unmatched.append((shot.name,idx,None if best is None else best[0]))
+                      continue
+                  d,name,path,old=best
+                  nv=band_value(new); ov=band_value(old)
+                  new_active=nv>190
+                  old_active=ov>190
+                  bdiff=badge_hash(new)-badge_hash(old)
+                  # Never replace an active card with a dark/inactive card.
+                  activated=(new_active and not old_active)
+                  # For current captures, levels are monotonic; a changed badge on an active card means a newer level.
+                  level_changed=(new_active and old_active and bdiff>=5)
+                  if activated or level_changed:
+                      score=(2 if activated else 1, nv, bdiff, -d)
+                      prev=observations.get(name)
+                      if prev is None or score>prev[0]:
+                          observations[name]=(score,new,path,shot.name,idx,d,nv,ov,bdiff,'activated' if activated else 'level')
+
+          updates={}
+          outdir=Path('images/flower-assets'); outdir.mkdir(parents=True,exist_ok=True)
+          report=[]
+          for name,(score,new,oldpath,shot,idx,d,nv,ov,bdiff,reason) in observations.items():
+              slug=hashlib.sha1(name.encode()).hexdigest()[:12]
+              fn=f'card-refresh-20260913-{slug}.webp'
+              new.save(outdir/fn,'WEBP',quality=90,method=6)
+              ref='./images/flower-assets/'+fn
+              # Update aliases that intentionally shared exactly the same old file.
+              for alias in path_to_names.get(oldpath,[name]):
+                  updates[alias]=ref
+              report.append((name,reason,shot,idx,d,round(ov,1),round(nv,1),bdiff,ref))
+
+          # Update all three operational maps.
+          def patch_json_object(path, pattern, prefix, suffix):
+              p=Path(path); s=p.read_text(encoding='utf-8')
+              mm=re.search(pattern,s,re.S)
+              if not mm: raise SystemExit('mapping not found: '+path)
+              obj=json.loads(mm.group(1)); obj.update(updates)
+              enc=json.dumps(obj,ensure_ascii=False,separators=(',',':'))
+              p.write_text(s[:mm.start()]+prefix+enc+suffix+s[mm.end():],encoding='utf-8')
+
+          if updates:
+              patch_json_object('app.html',r'const IMAGES=(\{.*?\});\s*const norm=','const IMAGES=',';\nconst norm=')
+              patch_json_object('guild-catalog-images.js',r'window\.GUILD_CATALOG_IMAGES=(\{.*\});\s*$','window.GUILD_CATALOG_IMAGES=',';\n')
+              p=Path('index.html'); s=p.read_text(encoding='utf-8')
+              start='// LATEST_CAPTURE_UPDATE_20260913_START'; end='// LATEST_CAPTURE_UPDATE_20260913_END'
+              s=re.sub(re.escape(start)+r'.*?'+re.escape(end)+r'\n?','',s,flags=re.S)
+              marker='const imageAliases='
+              if marker not in s: raise SystemExit('index marker missing')
+              block=start+'\nObject.assign(missingImages,'+json.dumps(updates,ensure_ascii=False,separators=(',',':'))+');\n'+end+'\n'
+              p.write_text(s.replace(marker,block+marker,1),encoding='utf-8')
+
+          print('=== UPDATED CARDS ===')
+          for row in sorted(report): print(row)
+          print('updated canonical observations:',len(report),'mapping keys:',len(updates))
+          print('=== UNMATCHED / LOW-CONFIDENCE POSITIONS ===')
+          for row in unmatched: print(row)
+          Path('/tmp/latest-card-report.json').write_text(json.dumps({'updated':report,'unmatched':unmatched},ensure_ascii=False,indent=2),encoding='utf-8')
+          PY
+      - name: Validate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          s=Path('index.html').read_text(encoding='utf-8')
+          a=s.find('<script>'); b=s.rfind('</script>')
+          if a<0 or b<=a: raise SystemExit('index script markers missing')
+          Path('/tmp/index.js').write_text(s[a+8:b],encoding='utf-8')
+          PY
+          node --check /tmp/index.js
+          git diff --check
+      - name: Commit updated thumbnails
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app.html index.html guild-catalog-images.js images/flower-assets/card-refresh-20260913-*.webp 2>/dev/null || true
+          git commit -m '최신 도감 캡처 기준 활성화·레벨 상승 썸네일 반영' || exit 0
+          git push
