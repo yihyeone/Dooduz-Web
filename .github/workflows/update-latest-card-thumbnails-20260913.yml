@@ -51,7 +51,6 @@ jobs:
           if not m: raise SystemExit('IMAGES map not found')
           images=json.loads(m.group(1))
 
-          # Existing asset index. Multiple aliases can intentionally share one path.
           path_to_names={}
           refs={}
           for name,ref in images.items():
@@ -63,7 +62,6 @@ jobs:
                   im=Image.open(fp).convert('RGB').resize((424,558),Image.Resampling.LANCZOS)
               except Exception:
                   continue
-              # Central illustration area: excludes level badge and flower-name band.
               center=im.crop((35,70,389,438)).convert('L')
               refs[name]=(clean, imagehash.phash(center), im)
               path_to_names.setdefault(clean,[]).append(name)
@@ -76,20 +74,16 @@ jobs:
 
           def normalize_card(src,box):
               card=src.crop(box).convert('RGB')
-              # Screenshot card bounds are already the game card bounds. Preserve the whole frame.
               return card.resize((424,558),Image.Resampling.LANCZOS)
 
           def band_value(im):
-              # The inactive state applies a dark gray overlay. The lower name band is a reliable detector.
               px=im.crop((20,435,404,530)).convert('HSV')
               vals=[v for _,_,v in px.getdata()]
               return sum(vals)/len(vals)
 
           def badge_hash(im):
-              # Hash only the level badge. Same card + same level is stable even with tiny resize variation.
               return imagehash.phash(im.crop((0,0,105,105)).convert('L'))
 
-          # Keep the best/latest occurrence for each matched flower.
           observations={}
           unmatched=[]
           for shot in sorted(Path('/tmp/latest-cards').glob('IMG_*.PNG')):
@@ -102,22 +96,20 @@ jobs:
                       d=nh-h
                       if best is None or d<best[0]: best=(d,name,path,old)
                   if best is None or best[0]>24:
-                      unmatched.append((shot.name,idx,None if best is None else best[0]))
+                      unmatched.append((shot.name,idx,None if best is None else int(best[0])))
                       continue
                   d,name,path,old=best
                   nv=band_value(new); ov=band_value(old)
                   new_active=nv>190
                   old_active=ov>190
                   bdiff=badge_hash(new)-badge_hash(old)
-                  # Never replace an active card with a dark/inactive card.
                   activated=(new_active and not old_active)
-                  # For current captures, levels are monotonic; a changed badge on an active card means a newer level.
                   level_changed=(new_active and old_active and bdiff>=5)
                   if activated or level_changed:
-                      score=(2 if activated else 1, nv, bdiff, -d)
+                      score=(2 if activated else 1, nv, int(bdiff), -int(d))
                       prev=observations.get(name)
                       if prev is None or score>prev[0]:
-                          observations[name]=(score,new,path,shot.name,idx,d,nv,ov,bdiff,'activated' if activated else 'level')
+                          observations[name]=(score,new,path,shot.name,idx,int(d),nv,ov,int(bdiff),'activated' if activated else 'level')
 
           updates={}
           outdir=Path('images/flower-assets'); outdir.mkdir(parents=True,exist_ok=True)
@@ -127,12 +119,10 @@ jobs:
               fn=f'card-refresh-20260913-{slug}.webp'
               new.save(outdir/fn,'WEBP',quality=90,method=6)
               ref='./images/flower-assets/'+fn
-              # Update aliases that intentionally shared exactly the same old file.
               for alias in path_to_names.get(oldpath,[name]):
                   updates[alias]=ref
-              report.append((name,reason,shot,idx,d,round(ov,1),round(nv,1),bdiff,ref))
+              report.append((name,reason,shot,int(idx),int(d),round(ov,1),round(nv,1),int(bdiff),ref))
 
-          # Update all three operational maps.
           def patch_json_object(path, pattern, prefix, suffix):
               p=Path(path); s=p.read_text(encoding='utf-8')
               mm=re.search(pattern,s,re.S)
@@ -157,7 +147,7 @@ jobs:
           print('updated canonical observations:',len(report),'mapping keys:',len(updates))
           print('=== UNMATCHED / LOW-CONFIDENCE POSITIONS ===')
           for row in unmatched: print(row)
-          Path('/tmp/latest-card-report.json').write_text(json.dumps({'updated':report,'unmatched':unmatched},ensure_ascii=False,indent=2),encoding='utf-8')
+          Path('/tmp/latest-card-report.json').write_text(json.dumps({'updated':report,'unmatched':unmatched},ensure_ascii=False,indent=2,default=int),encoding='utf-8')
           PY
       - name: Validate
         run: |
