@@ -14,6 +14,9 @@ Object.assign(missingImages,{"구름 조류 꽃무늬 배":"./images/flower-asse
 // THUMB_CROP_FIX_20260913_START
 Object.assign(missingImages,{"구름빛 사절":"./images/flower-assets/card-cloud-emissary-20260913b.webp","서리구름마":"./images/flower-assets/card-frost-cloud-horse-20260913b.webp","별의 시간의 사도":"./images/flower-assets/card-time-apostle-20260913b.webp"});
 // THUMB_CROP_FIX_20260913_END
+// CARD_CROP_FIX_7_20260913_START
+Object.assign(missingImages,{"쌍둥이자리·성수쌍영":"./images/flower-assets/card-gemini-seongsussangyeong-20260913c.webp","피어나는 동심":"./images/flower-assets/card-blooming-childhood-20260913c.webp","화려한 서커스":"./images/flower-assets/card-colorful-circus-20260913c.webp","곰 돛 구름배":"./images/flower-assets/card-bear-sail-cloud-boat-20260913c.webp","분홍빛 생일잔치":"./images/flower-assets/card-pink-birthday-party-20260913c.webp","핏빛 달의 피안화":"./images/flower-assets/card-bloodmoon-lycoris-20260913c.webp","진홍빛 백일초":"./images/flower-assets/card-crimson-zinnia-20260913c.webp"});
+// CARD_CROP_FIX_7_20260913_END
 const imageAliases=
 [["적염 괴화","적염규화"],["얕은 여울의 모래성","맑은 여울의 모래성"],["홍운 납매","홍운 남매"],["진홍빛 납매","진홍빛 남매"],["비령추란","비령축란"],["봄 살구빛 옷자락","봄 살구빛 웃자락"],["반짝 솜토끼","반짝 숨토끼"],["옛뜰 잔향","구정연향"],["유벽 메코놉시스","유백 메코놉시스"],["오렌지꿀 버베나","오렌지꽃 버베나"],["귤홍 윙윙 장미","금홍 윙윙 장미"],["스노우 씰 샤베트","스노우 셀 샤베트"],["용금 아네모네","용궁 아네모네"],["붉은불꽃 아네모네","붉은별꽃 아네모네"],["꿈의 보라 으아리","꿈의 보라 오아리"],["영롱한 얼음빛 납매","영롱한 얼음빛 남매"],["황금  가시 장미","황금 가시 장미"],["꾀꼬리 장미","꼬꼬리 장미"],["황금목 아마릴리스","황금국 아마릴리스"]];
     s=s.replace('const IMG=new Map',JSON.stringify(imageAliases)+'.forEach(([correct,legacy])=>{if(IMAGES[legacy])IMAGES[correct]=IMAGES[legacy]});Object.assign(IMAGES,'+JSON.stringify(missingImages)+');const IMG=new Map');
