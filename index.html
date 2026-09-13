@@ -11,6 +11,9 @@ Object.assign(missingImages,{"쌍둥이자리·성수쌍영":"./images/flower-as
 // CARD_IMAGE_FIX_20260913_START
 Object.assign(missingImages,{"구름 조류 꽃무늬 배":"./images/flower-assets/70d41db5c8d76d5675ce.webp","무지개빛 구름 바퀴":"./images/flower-assets/card-rainbow-cloud-wheel-20260913.webp","무지개빛 구름바퀴":"./images/flower-assets/card-rainbow-cloud-wheel-20260913.webp","별 연꽃 시간 고리":"./images/flower-assets/card-star-lotus-time-ring-20260913.webp","연분홍 앵초":"./images/flower-assets/card-pink-primrose-20260913.webp","눈 내린 앵초":"./images/flower-assets/card-snow-primrose-20260913.webp","주황불꽃 심비디움":"./images/flower-assets/card-orange-cymbidium-20260913.webp","주황 불꽃 심비디움":"./images/flower-assets/card-orange-cymbidium-20260913.webp","비취 심비디움":"./images/flower-assets/card-jade-cymbidium-20260913.webp","밝은 노랑 히비스커스":"./images/flower-assets/card-bright-yellow-hibiscus-20260913.webp"});
 // CARD_IMAGE_FIX_20260913_END
+// THUMB_CROP_FIX_20260913_START
+Object.assign(missingImages,{"구름빛 사절":"./images/flower-assets/card-cloud-emissary-20260913b.webp","서리구름마":"./images/flower-assets/card-frost-cloud-horse-20260913b.webp","별의 시간의 사도":"./images/flower-assets/card-time-apostle-20260913b.webp"});
+// THUMB_CROP_FIX_20260913_END
 const imageAliases=
 [["적염 괴화","적염규화"],["얕은 여울의 모래성","맑은 여울의 모래성"],["홍운 납매","홍운 남매"],["진홍빛 납매","진홍빛 남매"],["비령추란","비령축란"],["봄 살구빛 옷자락","봄 살구빛 웃자락"],["반짝 솜토끼","반짝 숨토끼"],["옛뜰 잔향","구정연향"],["유벽 메코놉시스","유백 메코놉시스"],["오렌지꿀 버베나","오렌지꽃 버베나"],["귤홍 윙윙 장미","금홍 윙윙 장미"],["스노우 씰 샤베트","스노우 셀 샤베트"],["용금 아네모네","용궁 아네모네"],["붉은불꽃 아네모네","붉은별꽃 아네모네"],["꿈의 보라 으아리","꿈의 보라 오아리"],["영롱한 얼음빛 납매","영롱한 얼음빛 남매"],["황금  가시 장미","황금 가시 장미"],["꾀꼬리 장미","꼬꼬리 장미"],["황금목 아마릴리스","황금국 아마릴리스"]];
     s=s.replace('const IMG=new Map',JSON.stringify(imageAliases)+'.forEach(([correct,legacy])=>{if(IMAGES[legacy])IMAGES[correct]=IMAGES[legacy]});Object.assign(IMAGES,'+JSON.stringify(missingImages)+');const IMG=new Map');
