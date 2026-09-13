@@ -1,0 +1,69 @@
+name: Repair known broken card paths 2026-09-13
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/repair-known-broken-card-paths-20260913.yml'
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore four known existing card images
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+            './images/flower-assets/card-bear-cloud-ship-20260913c.webp': './images/flower-assets/card-bear-sail-cloud-boat-20260913c.webp',
+            './images/flower-assets/card-blood-moon-lycoris-20260913c.webp': './images/flower-assets/card-bloodmoon-lycoris-20260913c.webp',
+            './images/flower-assets/card-fancy-circus-20260913c.webp': './images/flower-assets/card-colorful-circus-20260913c.webp',
+          }
+          files = ['app.html','index.html','guild-catalog-images.js']
+          for fn in files:
+              p=Path(fn)
+              s=p.read_text(encoding='utf-8')
+              before=s
+              for bad,good in replacements.items():
+                  s=s.replace(bad,good)
+              p.write_text(s,encoding='utf-8')
+              print(fn, 'changed=', before != s)
+
+          # 곰 듯 구름배는 동일 꽃의 과거 호환 별칭이므로 기존 정상 이미지로 고정
+          alias_bad='"곰 듯 구름배":"./images/flower-assets/card-bear-sail-cloud-boat-20260913c.webp"'
+          alias_good='"곰 듯 구름배":"./images/flower-assets/c3746494684d6a00957a.webp"'
+          for fn in files:
+              p=Path(fn); s=p.read_text(encoding='utf-8')
+              if alias_bad in s:
+                  s=s.replace(alias_bad,alias_good)
+                  p.write_text(s,encoding='utf-8')
+          PY
+      - name: Validate image paths
+        run: |
+          python3 - <<'PY'
+          import json,re,os
+          s=open('app.html',encoding='utf-8').read()
+          m=re.search(r'const IMAGES=(\{.*?\});\s*const norm=',s,re.S)
+          data=json.loads(m.group(1))
+          missing=[]
+          for name,ref in data.items():
+              path=ref.split('?',1)[0]
+              if path.startswith('./') and not os.path.exists(path[2:]):
+                  missing.append((name,ref))
+          print('MISSING_COUNT',len(missing))
+          for row in missing: print('MISSING',row[0],row[1])
+          expected={'따뜻한 노랑 루위시아','금빛 자운영','불꽃 치자꽃'}
+          actual={x[0] for x in missing}
+          if actual != expected:
+              raise SystemExit(f'unexpected missing set: {actual}')
+          PY
+          git diff --check
+      - name: Commit repair
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app.html index.html guild-catalog-images.js
+          git commit -m '기존 카드 이미지 4종 경로 복구' || exit 0
+          git push
