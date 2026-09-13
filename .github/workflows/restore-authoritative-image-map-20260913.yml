@@ -1,0 +1,90 @@
+name: Restore authoritative image map 2026-09-13
+on:
+  push:
+    paths:
+      - '.github/workflows/restore-authoritative-image-map-20260913.yml'
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore authoritative mappings only
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re,subprocess
+          BASE='effdadfd4d15e9b8974241d6486ab6348b95d24b'
+
+          def extract_app_map(text):
+              m=re.search(r'const IMAGES=(\{.*?\});\s*const norm=',text,re.S)
+              if not m: raise SystemExit('IMAGES map not found')
+              return m,json.loads(m.group(1))
+
+          # authoritative app map from last known-good state before automatic bulk refresh
+          base_app=subprocess.check_output(['git','show',f'{BASE}:app.html'],text=True)
+          _,auth=extract_app_map(base_app)
+          missing=[]
+          for n,r in auth.items():
+              clean=r.split('?',1)[0]
+              if clean.startswith('./') and not Path(clean[2:]).exists(): missing.append((n,r))
+          if missing:
+              raise SystemExit('authoritative map has missing files: '+repr(missing[:20]))
+
+          # keep current UI, replace only image mapping
+          ap=Path('app.html'); cur=ap.read_text(encoding='utf-8'); m,_=extract_app_map(cur)
+          enc=json.dumps(auth,ensure_ascii=False,separators=(',',':'))
+          ap.write_text(cur[:m.start(1)]+enc+cur[m.end(1):],encoding='utf-8')
+
+          # guild map uses same authoritative mapping
+          gp=Path('guild-catalog-images.js')
+          gp.write_text('window.GUILD_CATALOG_IMAGES='+enc+';\n',encoding='utf-8')
+
+          # index has historical/newer overrides. Add one final authoritative override
+          # immediately before imageAliases so no later bad bulk mapping can win.
+          ip=Path('index.html'); ix=ip.read_text(encoding='utf-8')
+          start='// AUTHORITATIVE_IMAGE_MAP_20260913_START'
+          end='// AUTHORITATIVE_IMAGE_MAP_20260913_END'
+          ix=re.sub(re.escape(start)+r'.*?'+re.escape(end)+r'\n?','',ix,flags=re.S)
+          marker='const imageAliases='
+          if marker not in ix: raise SystemExit('imageAliases marker missing')
+          block=start+'\nObject.assign(missingImages,'+enc+');\n'+end+'\n'
+          ix=ix.replace(marker,block+marker,1)
+          ip.write_text(ix,encoding='utf-8')
+
+          print('AUTHORITATIVE_COUNT',len(auth))
+          for name in ['데이지','순백 코스모스','푸른 솜털 국화','사자자리·금관의 빛나는 정원']:
+              print(name, auth.get(name))
+          PY
+      - name: Validate
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,re
+          s=Path('app.html').read_text(encoding='utf-8')
+          m=re.search(r'const IMAGES=(\{.*?\});\s*const norm=',s,re.S)
+          d=json.loads(m.group(1))
+          bad=[]
+          for n,r in d.items():
+              p=r.split('?',1)[0]
+              if p.startswith('./') and not Path(p[2:]).exists(): bad.append((n,r))
+          if bad: raise SystemExit('missing refs '+repr(bad[:20]))
+          if d.get('데이지') == d.get('푸른 솜털 국화'): raise SystemExit('daisy collision')
+          if d.get('순백 코스모스') == d.get('사자자리·금관의 빛나는 정원'): raise SystemExit('cosmos collision')
+          ix=Path('index.html').read_text(encoding='utf-8')
+          a=ix.find('<script>'); b=ix.rfind('</script>')
+          Path('/tmp/index.js').write_text(ix[a+8:b],encoding='utf-8')
+          print('mapping validation OK',len(d))
+          PY
+          node --check /tmp/index.js
+          git diff --check
+      - name: Commit restore
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add app.html index.html guild-catalog-images.js
+          git commit -m '검증된 기준본으로 꽃 이미지 매핑 복원' || exit 0
+          git push
