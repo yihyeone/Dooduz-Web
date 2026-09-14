@@ -394,3 +394,8 @@ Object.assign(window.GUILD_CATALOG_IMAGES, {
   "보라솜털 시클라멘": "./images/flower-assets/card-purple-fuzz-cyclamen-20260914.webp",
   "블루스타 납매": "./images/flower-assets/card-bluestar-wintersweet-20260914.webp"
 });
+Object.assign(window.GUILD_CATALOG_IMAGES, {
+  "노란줄무늬 깃털초": "./images/flower-assets/card-yellow-striped-featherflower-20260914.webp",
+  "먹푸른 깃털초": "./images/flower-assets/card-dark-blue-featherflower-20260914.webp",
+  "연분홍 익소라": "./images/flower-assets/card-light-pink-ixora-20260914.webp"
+});
