@@ -384,3 +384,13 @@ Object.assign(window.GUILD_CATALOG_IMAGES, {
   "촉영 해당화": "./images/flower-assets/c235706807e5e4babcba.webp",
   "하얀 눈의 영광": "./images/flower-assets/card-refresh-20260913-c51a040da2bf.webp"
 });
+Object.assign(window.GUILD_CATALOG_IMAGES, {
+  "불꽃심장 꿈조개": "./images/flower-assets/card-fireheart-dream-shell-20260914.webp",
+  "은하수에 실은 꿈": "./images/flower-assets/card-milky-way-dream-20260914.webp",
+  "자색 앵초": "./images/flower-assets/card-purple-primrose-20260914.webp",
+  "귤빛 불꽃 시클라멘": "./images/flower-assets/card-orange-flame-cyclamen-20260914.webp",
+  "금실 익소라": "./images/flower-assets/card-golden-thread-ixora-20260914.webp",
+  "노란 눈의 영광": "./images/flower-assets/card-yellow-glory-of-snow-20260914.webp",
+  "보라솜털 시클라멘": "./images/flower-assets/card-purple-fuzz-cyclamen-20260914.webp",
+  "블루스타 납매": "./images/flower-assets/card-bluestar-wintersweet-20260914.webp"
+});
