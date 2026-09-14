@@ -1,0 +1,61 @@
+(()=>{
+'use strict';
+const CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vSighkaGKMuouQNsjGsanPYmZE9jJ03_mIqUJ4RnFPhr5LKKVwNf2ZrgFpRdPl1cSDn3s7t5xTOOyo0/pub?gid=129712828&single=true&output=csv';
+const OUTPUT_W=424,OUTPUT_H=558,RECENT_KEY='dooduzAdminFlowerRecent';
+let initialized=false,flowers=[],mode='replace',sourceImage=null,sourceUrl='',baseScale=1,zoom=1,posX=0,posY=0,drag=null;
+const q=s=>document.querySelector(s);
+const norm=s=>String(s||'').replace(/[\s·ㆍ•・]/g,'').toLowerCase();
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function parseCSV(text){let rows=[],row=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++}else if(c==='"')quoted=false;else cell+=c}else if(c==='"')quoted=true;else if(c===','){row.push(cell);cell=''}else if(c==='\n'){row.push(cell.replace(/\r$/,''));rows.push(row);row=[];cell=''}else cell+=c}if(cell||row.length){row.push(cell);rows.push(row)}return rows}
+function findCol(headers,names){const clean=headers.map(x=>norm(x));for(const name of names){const i=clean.indexOf(norm(name));if(i>=0)return i}return-1}
+async function loadFlowers(){const text=await fetch(CSV_URL+'&_='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw Error('꽃 목록을 불러오지 못했습니다.');return r.text()});const rows=parseCSV(text),headers=rows[0]||[];const ni=findCol(headers,['꽃 이름','꽃이름','이름']),gi=findCol(headers,['등급','grade','rarity']);if(ni<0)throw Error('시트에서 꽃 이름 열을 찾지 못했습니다.');flowers=rows.slice(1).map((r,i)=>({row:i+2,name:String(r[ni]||'').trim(),grade:String(r[gi]||'').trim().toUpperCase()})).filter(x=>x.name);const datalist=q('#flowerNames');datalist.innerHTML=flowers.map(x=>'<option value="'+esc(x.name)+'">'+esc(x.grade)+'</option>').join('');syncFlowerHint()}
+
+function buildUI(){
+  q('#flowerAdminView').innerHTML=`
+  <section class="flower-admin-card"><h2>꽃 썸네일 업데이트</h2><p>게임 캡처에서 카드 전체를 맞춘 뒤 등록하면 도감 이미지와 꽃 정보가 함께 반영됩니다.</p>
+    <div class="mode-switch" role="group" aria-label="업데이트 종류"><button class="on" type="button" data-flower-mode="replace">기존 이미지 교체</button><button type="button" data-flower-mode="new">신규 꽃 등록</button></div>
+    <div class="flower-fields-row"><div class="flower-field"><label for="flowerNameInput">꽃 이름</label><input id="flowerNameInput" list="flowerNames" maxlength="60" autocomplete="off" placeholder="정확한 꽃 이름"><datalist id="flowerNames"></datalist></div><div class="flower-field"><label for="flowerGradeInput">등급</label><select id="flowerGradeInput"><option>UR</option><option>SSR</option><option>SR</option><option>R</option><option>N</option></select></div></div>
+    <p class="existing-hint" id="existingHint">기존 꽃 이름을 검색해 선택해 주세요.</p>
+    <div class="flower-field new-only" hidden><label for="flowerOwnerInput">보유자 닉네임 <small>(선택)</small></label><input id="flowerOwnerInput" maxlength="80" placeholder="없으면 비워두세요"></div>
+    <div class="flower-field"><label for="flowerUpdateKey">꽃 등록 비밀번호</label><input id="flowerUpdateKey" type="password" maxlength="100" autocomplete="current-password" placeholder="관리자 PIN과 별도의 등록 비밀번호"><p class="existing-hint">GitHub 쓰기 권한을 보호하기 위한 비밀번호입니다. 기기에 저장하지 않습니다.</p></div>
+    <label class="image-pick"><span>캡처 이미지 선택<small>사진 앱에서 미리 자르지 않아도 됩니다</small></span><input id="flowerImageInput" type="file" accept="image/*"></label>
+    <div class="crop-wrap" id="cropWrap"><div class="crop-stage" id="cropStage"><img id="cropImage" alt="크롭할 원본"><span class="crop-grid" aria-hidden="true"></span></div><div class="zoom-row"><span>−</span><input id="cropZoom" type="range" min="1" max="3" step="0.01" value="1" aria-label="이미지 확대"><span>＋</span></div><p class="crop-help">이미지를 손가락으로 움직여 카드 테두리를 틀에 맞춰주세요.</p><div class="preview-row"><canvas id="cropPreview" width="424" height="558"></canvas><div class="preview-copy"><strong>등록될 이미지 미리보기</strong><span>424×558px · WebP<br>카드의 위아래와 테두리가 모두 보이는지 확인하세요.</span></div></div></div>
+    <button class="flower-submit" id="flowerSubmit" type="button">이미지 교체하기</button><p class="flower-status" id="flowerStatus"></p>
+  </section>
+  <section class="flower-admin-card"><h2>최근 작업</h2><p>이 기기에서 등록한 최근 5건입니다.</p><div class="recent-list" id="flowerRecent"></div></section>`;
+  bindUI();renderRecent();
+}
+
+function bindUI(){
+  document.querySelectorAll('[data-admin-tab]').forEach(btn=>btn.onclick=()=>{document.querySelectorAll('[data-admin-tab]').forEach(x=>x.classList.toggle('on',x===btn));q('#flowerAdminView').classList.toggle('on',btn.dataset.adminTab==='flowers');q('#memberAdminView').classList.toggle('on',btn.dataset.adminTab==='members')});
+  document.querySelectorAll('[data-flower-mode]').forEach(btn=>btn.onclick=()=>setMode(btn.dataset.flowerMode));
+  q('#flowerNameInput').addEventListener('input',syncFlowerHint);
+  q('#flowerImageInput').addEventListener('change',onImagePick);
+  q('#cropZoom').addEventListener('input',onZoom);
+  q('#flowerSubmit').addEventListener('click',submitFlower);
+  const stage=q('#cropStage');stage.addEventListener('pointerdown',e=>{if(!sourceImage)return;drag={id:e.pointerId,x:e.clientX,y:e.clientY,px:posX,py:posY};stage.setPointerCapture(e.pointerId)});stage.addEventListener('pointermove',e=>{if(!drag||drag.id!==e.pointerId)return;posX=drag.px+e.clientX-drag.x;posY=drag.py+e.clientY-drag.y;clampPosition();paint()});stage.addEventListener('pointerup',()=>drag=null);stage.addEventListener('pointercancel',()=>drag=null);
+}
+
+function setMode(next){mode=next;document.querySelectorAll('[data-flower-mode]').forEach(x=>x.classList.toggle('on',x.dataset.flowerMode===mode));document.querySelectorAll('.new-only').forEach(x=>x.hidden=mode!=='new');q('#flowerGradeInput').disabled=mode==='replace';q('#flowerSubmit').textContent=mode==='new'?'신규 꽃 등록하기':'이미지 교체하기';syncFlowerHint()}
+function exactFlower(){const value=norm(q('#flowerNameInput').value);return flowers.find(x=>norm(x.name)===value)}
+function syncFlowerHint(){const hint=q('#existingHint');if(!hint)return;const name=q('#flowerNameInput').value.trim(),found=exactFlower();hint.className='existing-hint';if(!name){hint.textContent=mode==='new'?'등록할 새 꽃 이름을 입력해 주세요.':'기존 꽃 이름을 검색해 선택해 주세요.'}else if(found){hint.textContent='도감 등록 확인 · '+found.grade+' · 시트 '+found.row+'행';hint.classList.add(mode==='new'?'warn':'ok');q('#flowerGradeInput').value=found.grade||'N'}else{hint.textContent=mode==='new'?'새 꽃으로 등록할 수 있습니다.':'기존 도감에서 같은 이름을 찾지 못했습니다.';hint.classList.add(mode==='new'?'ok':'warn')}}
+
+function onImagePick(e){const file=e.target.files&&e.target.files[0];if(!file)return;if(!file.type.startsWith('image/'))return setStatus('이미지 파일을 선택해 주세요.',true);if(file.size>15*1024*1024)return setStatus('원본 이미지는 15MB 이하로 선택해 주세요.',true);if(sourceUrl)URL.revokeObjectURL(sourceUrl);sourceUrl=URL.createObjectURL(file);const img=q('#cropImage');img.onload=()=>{sourceImage=img;q('#cropWrap').classList.add('on');q('#cropZoom').value='1';zoom=1;requestAnimationFrame(resetCrop);setStatus('')};img.onerror=()=>setStatus('이미지를 열지 못했습니다. 다른 이미지를 선택해 주세요.',true);img.src=sourceUrl}
+function resetCrop(){const stage=q('#cropStage'),w=stage.clientWidth,h=stage.clientHeight;baseScale=Math.max(w/sourceImage.naturalWidth,h/sourceImage.naturalHeight);posX=(w-sourceImage.naturalWidth*baseScale)/2;posY=(h-sourceImage.naturalHeight*baseScale)/2;clampPosition();paint()}
+function onZoom(e){const old=zoom,next=Number(e.target.value),stage=q('#cropStage'),cx=stage.clientWidth/2,cy=stage.clientHeight/2;posX=cx-(cx-posX)*(next/old);posY=cy-(cy-posY)*(next/old);zoom=next;clampPosition();paint()}
+function clampPosition(){if(!sourceImage)return;const stage=q('#cropStage'),scale=baseScale*zoom,w=sourceImage.naturalWidth*scale,h=sourceImage.naturalHeight*scale;posX=Math.min(0,Math.max(stage.clientWidth-w,posX));posY=Math.min(0,Math.max(stage.clientHeight-h,posY))}
+function paint(){if(!sourceImage)return;const scale=baseScale*zoom,img=q('#cropImage');img.style.width=sourceImage.naturalWidth*scale+'px';img.style.height=sourceImage.naturalHeight*scale+'px';img.style.transform='translate('+posX+'px,'+posY+'px)';drawPreview()}
+function drawPreview(){const stage=q('#cropStage'),canvas=q('#cropPreview'),ctx=canvas.getContext('2d'),scale=baseScale*zoom;const sx=-posX/scale,sy=-posY/scale,sw=stage.clientWidth/scale,sh=stage.clientHeight/scale;ctx.clearRect(0,0,OUTPUT_W,OUTPUT_H);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(sourceImage,sx,sy,sw,sh,0,0,OUTPUT_W,OUTPUT_H)}
+function makeWebP(){drawPreview();const data=q('#cropPreview').toDataURL('image/webp',.88);if(!data.startsWith('data:image/webp'))throw Error('이 브라우저에서 WebP 변환을 지원하지 않습니다. 최신 Safari나 Chrome에서 다시 시도해 주세요.');return data.split(',')[1]}
+
+function postToAppsScript(fields){return new Promise((resolve,reject)=>{const nonce='dooduzFlower'+Date.now()+Math.random().toString(36).slice(2),iframe=document.createElement('iframe'),form=document.createElement('form');let timer;iframe.hidden=true;iframe.name=nonce;form.hidden=true;form.method='POST';form.action=API_URL;form.target=nonce;Object.entries({...fields,nonce}).forEach(([name,value])=>{const input=document.createElement('textarea');input.name=name;input.value=String(value??'');form.appendChild(input)});function cleanup(){clearTimeout(timer);window.removeEventListener('message',onMessage);setTimeout(()=>{iframe.remove();form.remove()},0)}function onMessage(e){const v=e.data;if(!v||v.nonce!==nonce)return;cleanup();v.ok?resolve(v):reject(Error(v.error||'등록하지 못했습니다.'))}window.addEventListener('message',onMessage);document.body.append(iframe,form);timer=setTimeout(()=>{cleanup();reject(Error('서버 응답이 없습니다. Apps Script 새 버전 배포가 필요할 수 있습니다.'))},45000);form.submit()})}
+
+async function submitFlower(){const name=q('#flowerNameInput').value.trim(),grade=q('#flowerGradeInput').value,owner=q('#flowerOwnerInput').value.trim(),updateKey=q('#flowerUpdateKey').value,found=exactFlower(),button=q('#flowerSubmit');if(!name)return setStatus('꽃 이름을 입력해 주세요.',true);if(mode==='new'&&found)return setStatus('이미 등록된 꽃 이름입니다. 기존 이미지 교체를 선택해 주세요.',true);if(mode==='replace'&&!found)return setStatus('기존 도감에서 꽃 이름을 찾지 못했습니다.',true);if(updateKey.length<8)return setStatus('꽃 등록 비밀번호를 입력해 주세요.',true);if(!sourceImage)return setStatus('캡처 이미지를 선택하고 크롭해 주세요.',true);if(!confirm((mode==='new'?'신규 꽃 등록':'기존 이미지 교체')+'\n\n'+name+(mode==='new'?' · '+grade:'')+'\n이대로 반영할까요?'))return;button.disabled=true;setStatus('이미지를 변환하고 업데이트하고 있습니다…');try{const result=await postToAppsScript({action:'admin-save-flower',pin:adminPin,updateKey,mode,flowerName:name,grade,owner,imageBase64:makeWebP()});remember({name,grade:mode==='new'?grade:found.grade,path:result.imagePath,at:new Date().toISOString(),mode});setStatus((mode==='new'?'신규 꽃 등록':'이미지 교체')+'이 완료되었습니다.\n도감 반영까지 1~2분 정도 걸릴 수 있습니다.',false,true);if(mode==='new')await loadFlowers();resetForm()}catch(e){setStatus(e.message,true)}finally{button.disabled=false}}
+function resetForm(){q('#flowerNameInput').value='';q('#flowerOwnerInput').value='';q('#flowerImageInput').value='';q('#cropWrap').classList.remove('on');if(sourceUrl)URL.revokeObjectURL(sourceUrl);sourceUrl='';sourceImage=null;syncFlowerHint()}
+function setStatus(message,isError=false,isSuccess=false){const el=q('#flowerStatus');el.textContent=message;el.className='flower-status'+(isError?' error':isSuccess?' success':'')}
+function remember(item){let rows=[];try{rows=JSON.parse(localStorage.getItem(RECENT_KEY)||'[]')}catch(e){}rows.unshift(item);try{localStorage.setItem(RECENT_KEY,JSON.stringify(rows.slice(0,5)))}catch(e){}renderRecent()}
+function renderRecent(){const box=q('#flowerRecent');if(!box)return;let rows=[];try{rows=JSON.parse(localStorage.getItem(RECENT_KEY)||'[]')}catch(e){}box.innerHTML=rows.length?rows.map(x=>'<div class="recent-item">'+(x.path?'<img src="'+esc(x.path)+'?v='+Date.now()+'" alt="">':'')+'<span><strong>'+esc(x.name)+'</strong><small>'+esc(x.grade||'')+' · '+(x.mode==='new'?'신규 등록':'이미지 교체')+'</small></span><time>'+new Date(x.at).toLocaleDateString('ko-KR')+'</time></div>').join(''):'<p class="existing-hint">아직 이 기기에서 작업한 기록이 없습니다.</p>'}
+
+window.initializeFlowerAdmin=async()=>{if(initialized)return;initialized=true;buildUI();setMode('replace');try{await loadFlowers()}catch(e){setStatus(e.message,true)}};
+})();
