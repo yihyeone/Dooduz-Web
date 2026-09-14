@@ -47,8 +47,12 @@ Object.assign(IMAGES,{"별빛 입맞춤 구름 양":"./images/flower-assets/ef85
 Object.assign(IMAGES,{"불꽃심장 꿈조개":"./images/flower-assets/card-fireheart-dream-shell-20260914.webp","은하수에 실은 꿈":"./images/flower-assets/card-milky-way-dream-20260914.webp","자색 앵초":"./images/flower-assets/card-purple-primrose-20260914.webp","귤빛 불꽃 시클라멘":"./images/flower-assets/card-orange-flame-cyclamen-20260914.webp","금실 익소라":"./images/flower-assets/card-golden-thread-ixora-20260914.webp","노란 눈의 영광":"./images/flower-assets/card-yellow-glory-of-snow-20260914.webp","보라솜털 시클라멘":"./images/flower-assets/card-purple-fuzz-cyclamen-20260914.webp","블루스타 납매":"./images/flower-assets/card-bluestar-wintersweet-20260914.webp"});
 Object.assign(IMAGES,{"노란줄무늬 깃털초":"./images/flower-assets/card-yellow-striped-featherflower-r-20260914.webp","먹푸른 깃털초":"./images/flower-assets/card-dark-blue-featherflower-r-20260914.webp","연분홍 익소라":"./images/flower-assets/card-light-pink-ixora-r-20260914.webp","썬글로우 히페리쿰":"./images/flower-assets/card-sunglow-hypericum-r-20260914.webp","연분홍 갯질경":"./images/flower-assets/card-light-pink-sea-lavender-r-20260914.webp"});
 // FLOWER_IMAGE_UPDATE_20260914_END
+// 관리자 페이지의 최신 매핑을 항상 마지막에 적용해 브라우저 캐시와 과거 매핑을 덮어쓴다.
+Object.assign(IMAGES,window.GUILD_CATALOG_IMAGES||{});
 const norm=s=>String(s||'').replace(/[\s·ㆍ•・]/g,'').toLowerCase();
 const IMG=new Map(Object.entries(IMAGES).map(([k,v])=>[norm(k),v]));
+// index.html의 과거 호환 매핑보다 관리자 페이지의 최신 경로를 우선한다.
+Object.entries(window.GUILD_CATALOG_IMAGES||{}).forEach(([name,path])=>IMG.set(norm(name),path));
 const ESC=s=>String(s??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
 let ALL=[],grade='ALL',ownership='ALL',sortMode='DEFAULT',visibleRows=[];
 function parseCSV(t){let rows=[],row=[],v='',q=false;for(let i=0;i<t.length;i++){let c=t[i],n=t[i+1];if(q){if(c==='\"'&&n==='\"'){v+='\"';i++}else if(c==='\"')q=false;else v+=c}else{if(c==='\"')q=true;else if(c===','){row.push(v);v=''}else if(c==='\n'){row.push(v);rows.push(row);row=[];v=''}else if(c!=='\r')v+=c}}row.push(v);rows.push(row);return rows}
@@ -64,6 +68,10 @@ async function load(){document.getElementById('grid').innerHTML='<div class="loa
 function replaceBrokenImage(img){if(img.dataset.imageFallback==='1')return;img.dataset.imageFallback='1';if(img.id==='big'){img.removeAttribute('src');img.style.display='none';return}const missing=document.createElement('div');missing.className='thumb image-missing';missing.textContent='NO IMAGE';missing.setAttribute('role','img');missing.setAttribute('aria-label',(img.alt||'꽃 이미지')+' 이미지 준비 중');img.replaceWith(missing)}
 document.addEventListener('error',e=>{const img=e.target;if(img instanceof HTMLImageElement&&(img.classList.contains('thumb')||img.id==='big'))replaceBrokenImage(img)},true);
 document.getElementById('q').oninput=render;document.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-g]').forEach(x=>x.classList.remove('active'));b.classList.add('active');grade=b.dataset.g;render()});document.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-o]').forEach(x=>x.classList.remove('active'));b.classList.add('active');ownership=b.dataset.o;render()});document.getElementById('sort').onchange=e=>{sortMode=e.target.value;render()};document.getElementById('refresh').onclick=load;document.getElementById('x').onclick=()=>document.getElementById('sheet').close();document.getElementById('prev').onclick=()=>moveDetail(-1);document.getElementById('next').onclick=()=>moveDetail(1);document.getElementById('sheet').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.close()});load();
+</script>
+<script id="doguldan-admin-images">
+// 관리자 등록분은 매번 새로 받아 즉시 반영한다. 실패해도 기존 도감은 그대로 동작한다.
+(async()=>{try{const r=await fetch('./admin-flower-images.json?_='+Date.now(),{cache:'no-store'});if(!r.ok)return;const images=await r.json();Object.entries(images||{}).forEach(([name,path])=>IMG.set(norm(name),path));if(ALL.length)render()}catch(e){console.warn('admin flower images load failed',e)}})();
 </script>
 <script id="doguldan-view-mode">
 (()=>{
