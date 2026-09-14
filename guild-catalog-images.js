@@ -397,5 +397,6 @@ Object.assign(window.GUILD_CATALOG_IMAGES, {
 Object.assign(window.GUILD_CATALOG_IMAGES, {
   "노란줄무늬 깃털초": "./images/flower-assets/card-yellow-striped-featherflower-r-20260914.webp",
   "먹푸른 깃털초": "./images/flower-assets/card-dark-blue-featherflower-r-20260914.webp",
-  "연분홍 익소라": "./images/flower-assets/card-light-pink-ixora-r-20260914.webp"
+  "연분홍 익소라": "./images/flower-assets/card-light-pink-ixora-r-20260914.webp",
+  "연분홍 갯질경": "./images/flower-assets/card-light-pink-sea-lavender-r-20260914.webp"
 });
