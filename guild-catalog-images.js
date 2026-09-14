@@ -335,7 +335,7 @@ window.GUILD_CATALOG_IMAGES={
   "앵구다정": "./images/flower-assets/2b88004252937a9f1886.webp",
   "진홍빛 백일초": "./images/flower-assets/card-crimson-zinnia-20260913c.webp",
   "금잔화 궁등": "./images/flower-assets/b3e6505ebab2912fb4a3.webp",
-  "썬글로우 히페리쿰": "./images/flower-assets/card-sunglow-hypericum-20260914.webp",
+  "썬글로우 히페리쿰": "./images/flower-assets/card-sunglow-hypericum-r-20260914.webp",
   "무지개빛 구름 바퀴": "./images/flower-assets/card-rainbow-cloud-wheel-20260913.webp",
   "무지개빛 구름바퀴": "./images/flower-assets/card-rainbow-cloud-wheel-20260913.webp",
   "구름 조류 꽃무늬 배": "./images/flower-assets/70d41db5c8d76d5675ce.webp",
@@ -395,7 +395,7 @@ Object.assign(window.GUILD_CATALOG_IMAGES, {
   "블루스타 납매": "./images/flower-assets/card-bluestar-wintersweet-20260914.webp"
 });
 Object.assign(window.GUILD_CATALOG_IMAGES, {
-  "노란줄무늬 깃털초": "./images/flower-assets/card-yellow-striped-featherflower-20260914.webp",
-  "먹푸른 깃털초": "./images/flower-assets/card-dark-blue-featherflower-20260914.webp",
-  "연분홍 익소라": "./images/flower-assets/card-light-pink-ixora-20260914.webp"
+  "노란줄무늬 깃털초": "./images/flower-assets/card-yellow-striped-featherflower-r-20260914.webp",
+  "먹푸른 깃털초": "./images/flower-assets/card-dark-blue-featherflower-r-20260914.webp",
+  "연분홍 익소라": "./images/flower-assets/card-light-pink-ixora-r-20260914.webp"
 });
