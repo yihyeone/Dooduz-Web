@@ -25,6 +25,12 @@ function doGet(e) {
       if (!isAdminPin_(pin)) {
         return jsonp_(callback, { ok: false, error: '관리자 PIN이 올바르지 않습니다.' });
       }
+      if (action === 'admin-flower-status') {
+        const nonce = String(p.nonce || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 100);
+        if (!nonce) return jsonp_(callback, { ok: false, error: '등록 요청 번호가 없습니다.' });
+        const cached = CacheService.getScriptCache().get('flower-admin-' + nonce);
+        return jsonp_(callback, cached ? JSON.parse(cached) : { ok: true, pending: true });
+      }
       if (action === 'admin-list') return jsonp_(callback, { ok: true, members: listMembers_() });
       if (action === 'admin-save-member') {
         return jsonp_(callback, saveMemberPin_(
@@ -76,6 +82,9 @@ function doPost(e) {
     payload = { ok: false, error: err && err.message ? err.message : '처리 중 오류가 발생했습니다.' };
   }
   payload.nonce = nonce;
+  if (nonce) {
+    CacheService.getScriptCache().put('flower-admin-' + nonce, JSON.stringify(payload), 600);
+  }
   const json = JSON.stringify(payload).replace(/</g, '\\u003c');
   return HtmlService.createHtmlOutput(
     '<!doctype html><meta charset="utf-8"><script>parent.postMessage(' + json + ',"*");<\/script>'
