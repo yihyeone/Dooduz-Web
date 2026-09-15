@@ -202,6 +202,18 @@ function getGithubConfig_() {
   };
 }
 
+/**
+ * 최초 1회 외부 요청 권한 승인용 함수입니다.
+ * Apps Script 편집기에서 이 함수를 직접 실행하고 권한을 허용합니다.
+ */
+function authorizeGithubAccess() {
+  const response = UrlFetchApp.fetch('https://api.github.com', {
+    muteHttpExceptions: true,
+    headers: { Accept: 'application/vnd.github+json' }
+  });
+  Logger.log('GitHub authorization check: ' + response.getResponseCode());
+}
+
 function githubRequest_(apiPath, options) {
   const config = getGithubConfig_();
   const opts = options || {};
