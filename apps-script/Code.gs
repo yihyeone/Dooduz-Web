@@ -114,7 +114,8 @@ function saveFlowerFromAdmin_(p) {
   let bytes;
   try { bytes = Utilities.base64Decode(imageBase64); }
   catch (err) { throw new Error('이미지 데이터를 읽지 못했습니다.'); }
-  if (!isWebP_(bytes)) throw new Error('WebP 이미지 형식이 아닙니다.');
+  const imageExtension = detectImageExtension_(bytes);
+  if (!imageExtension) throw new Error('지원하는 이미지 형식이 아닙니다.');
 
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -126,7 +127,7 @@ function saveFlowerFromAdmin_(p) {
     const now = new Date();
     const stamp = Utilities.formatDate(now, 'Asia/Seoul', 'yyyyMMdd-HHmmss');
     const digest = shortHash_(flowerName + '|' + now.getTime());
-    const imagePath = ADMIN_IMAGE_DIRECTORY + 'card-admin-' + stamp + '-' + digest + '.webp';
+    const imagePath = ADMIN_IMAGE_DIRECTORY + 'card-admin-' + stamp + '-' + digest + '.' + imageExtension;
     const publicPath = './' + imagePath;
 
     createGithubFile_(imagePath, imageBase64, '꽃 이미지 ' + (mode === 'new' ? '등록: ' : '교체: ') + flowerName);
@@ -184,6 +185,17 @@ function isWebP_(bytes) {
     return out;
   };
   return text(0, 4) === 'RIFF' && text(8, 4) === 'WEBP';
+}
+
+function isJpeg_(bytes) {
+  return !!bytes && bytes.length >= 3 &&
+    (bytes[0] & 255) === 0xff && (bytes[1] & 255) === 0xd8 && (bytes[2] & 255) === 0xff;
+}
+
+function detectImageExtension_(bytes) {
+  if (isWebP_(bytes)) return 'webp';
+  if (isJpeg_(bytes)) return 'jpg';
+  return '';
 }
 
 function shortHash_(text) {
