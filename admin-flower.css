@@ -14,3 +14,5 @@
 .flower-submit{width:100%;min-height:51px;margin-top:15px;border:0;border-radius:14px;background:var(--brown);color:#fff4dd;font-size:16px;font-weight:950;cursor:pointer}.flower-submit:disabled{opacity:.5}.flower-status{min-height:21px;margin-top:10px;color:var(--muted);font-size:12px;font-weight:850;text-align:center;white-space:pre-line}.flower-status.error{color:#b84e42}.flower-status.success{color:#41805a}
 .recent-list{display:grid;gap:7px;margin-top:12px}.recent-item{display:grid;grid-template-columns:46px minmax(0,1fr) auto;align-items:center;gap:9px;padding:8px;border:1px solid var(--line);border-radius:12px;background:#fff}.recent-item img{width:46px;aspect-ratio:212/279;object-fit:cover;border-radius:7px}.recent-item strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}.recent-item small{color:var(--muted);font-size:10px}.recent-item time{color:var(--muted);font-size:9px}
 @media(max-width:390px){.flower-admin-card{padding:14px}.crop-stage{width:min(100%,286px)}.flower-fields-row{grid-template-columns:minmax(0,1fr) 82px}}
+
+.flower-field[hidden]{display:none}
