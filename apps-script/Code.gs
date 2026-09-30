@@ -7,7 +7,6 @@ const ADMIN_NICKNAME = '두더지도굴단';
 const GITHUB_TOKEN_PROPERTY = 'GITHUB_TOKEN';
 const GITHUB_REPOSITORY_PROPERTY = 'GITHUB_REPOSITORY';
 const GITHUB_BRANCH_PROPERTY = 'GITHUB_BRANCH';
-const ADMIN_FLOWER_KEY_PROPERTY = 'ADMIN_FLOWER_KEY';
 const DEFAULT_GITHUB_REPOSITORY = 'yihyeone/Dooduz-Web';
 const DEFAULT_GITHUB_BRANCH = 'main';
 const ADMIN_IMAGE_MAP_PATH = 'admin-flower-images.json';
@@ -31,7 +30,7 @@ function doGet(e) {
         const cached = CacheService.getScriptCache().get('flower-admin-' + nonce);
         return jsonp_(callback, cached ? JSON.parse(cached) : { ok: true, pending: true });
       }
-      if (action === 'admin-list') return jsonp_(callback, { ok: true, members: listMembers_() });
+      if (action === 'admin-list') return jsonp_(callback, { ok: true, members: listMembers_(), flowerPinOnly: true });
       if (action === 'admin-save-member') {
         return jsonp_(callback, saveMemberPin_(
           String(p.memberNickname || '').trim(),
@@ -74,9 +73,6 @@ function doPost(e) {
     if (!isAdminPin_(String(p.pin || ''))) {
       throw new Error('관리자 PIN이 올바르지 않습니다.');
     }
-    if (!isValidFlowerAdminKey_(String(p.updateKey || ''))) {
-      throw new Error('꽃 등록 비밀번호가 올바르지 않습니다.');
-    }
     payload = saveFlowerFromAdmin_(p);
   } catch (err) {
     payload = { ok: false, error: err && err.message ? err.message : '처리 중 오류가 발생했습니다.' };
@@ -89,11 +85,6 @@ function doPost(e) {
   return HtmlService.createHtmlOutput(
     '<!doctype html><meta charset="utf-8"><script>parent.postMessage(' + json + ',"*");<\/script>'
   ).setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-function isValidFlowerAdminKey_(value) {
-  const expected = String(PropertiesService.getScriptProperties().getProperty(ADMIN_FLOWER_KEY_PROPERTY) || '');
-  return expected.length >= 8 && value === expected;
 }
 
 function saveFlowerFromAdmin_(p) {
