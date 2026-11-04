@@ -48,8 +48,8 @@ function doGet(e) {
     }
 
     if (action === 'verify') return jsonp_(callback, { ok: true, nickname: nickname });
-    if (action === 'save') {
-      const result = saveOwnership_(nickname, String(p.rows || ''));
+    if (action === 'save' || action === 'save-levels') {
+      const result = saveOwnership_(nickname, String(p.rows || ''), action === 'save-levels' ? String(p.levels || '') : '');
       return jsonp_(callback, result);
     }
     return jsonp_(callback, { ok: false, error: '지원하지 않는 요청입니다.' });
@@ -372,10 +372,16 @@ function removeMemberOwnership_(nickname) {
   const ownerCol = findColumn_(values[0], ['보유자 닉네임', '보유자닉네임', '보유자']);
   if (ownerCol < 0) throw new Error('보유자 닉네임 열을 찾을 수 없습니다.');
 
+  const specialCol = findColumn_(values[0], ['절품 보유']);
   let removedCount = 0;
   const nextOwnerValues = [];
   for (let i = 1; i < values.length; i++) {
     const owners = parseOwners_(values[i][ownerCol]);
+    if (specialCol >= 0) {
+      const entries = parseOwners_(values[i][specialCol]);
+      const keep = entries.filter(entry => entry !== nickname && specialOwnerName_(entry) !== nickname);
+      if (entries.length !== keep.length) sheet.getRange(i + 1, specialCol + 1).setValue(keep.join(', '));
+    }
     const filtered = owners.filter(function(owner) { return owner !== nickname; });
     if (filtered.length !== owners.length) removedCount++;
     nextOwnerValues.push([filtered.join(', ')]);
@@ -418,7 +424,11 @@ function parseOwners_(value) {
   return String(value || '').split(/[,，\n]+/).map(function(v) { return v.trim(); }).filter(Boolean);
 }
 
-function saveOwnership_(nickname, rowList) {
+function specialOwnerName_(entry) {
+  return entry.replace(/\s*\+[1-4]$/, '').trim();
+}
+
+function saveOwnership_(nickname, rowList, levelChanges) {
   if (!nickname || nickname.length > 30) throw new Error('닉네임을 정확히 입력해 주세요.');
 
   const selectedRows = new Set(
@@ -438,6 +448,19 @@ function saveOwnership_(nickname, rowList) {
     const ownerCol = findColumn_(headers, ['보유자 닉네임', '보유자닉네임', '보유자']);
     if (nameCol < 0 || ownerCol < 0) throw new Error('꽃 이름 또는 보유자 닉네임 열을 찾을 수 없습니다.');
 
+    const specialCol = findColumn_(headers, ['절품 보유']);
+    const changes = new Map();
+    if (levelChanges && specialCol < 0) throw new Error('절품 보유 열을 찾을 수 없습니다.');
+    for (const item of (levelChanges || '').split(',').filter(Boolean)) {
+      const match = /^(\d+):([0-4])$/.exec(item);
+      if (!match) throw new Error('절품 단계를 확인해 주세요.');
+      const row = Number(match[1]), level = Number(match[2]);
+      if (row < 2 || row > values.length || (level && !selectedRows.has(row))) {
+        throw new Error('선택한 꽃과 절품 단계를 확인해 주세요.');
+      }
+      changes.set(row, level);
+    }
+
     const previous = [];
     const nextOwnerValues = [];
     let ownedCount = 0;
@@ -454,6 +477,12 @@ function saveOwnership_(nickname, rowList) {
       if (shouldOwn) {
         owners.push(nickname);
         ownedCount++;
+      }
+      if (specialCol >= 0 && (changes.has(rowNumber) || (hadNickname && !shouldOwn))) {
+        const entries = parseOwners_(values[i][specialCol]).filter(entry => specialOwnerName_(entry) !== nickname && entry !== nickname);
+        const level = changes.get(rowNumber);
+        if (level && shouldOwn) entries.push(nickname + ' +' + level);
+        sheet.getRange(rowNumber, specialCol + 1).setValue(entries.join(', '));
       }
       nextOwnerValues.push([owners.join(', ')]);
     }
